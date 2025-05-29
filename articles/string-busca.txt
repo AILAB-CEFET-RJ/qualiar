@@ -1,0 +1,8 @@
+String de Busca 1 - Retornou 38 artigos 
+
+( TITLE("machine learning" OR "random forest" OR "neural network" OR "deep learning" OR "predictive model*") AND TITLE-ABS-KEY ("air quality" OR "air pollut*" OR pollutant* OR "particulate matter" OR "nitrogen dioxide" OR "carbon monoxide" OR ozone OR "sulfur dioxide") AND TITLE-ABS-KEY ("respiratory disease*" OR "respiratory admission*" OR "respiratory hospitalization*" OR "COPD") AND TITLE-ABS-KEY ("machine learning" OR "predictive model*" OR "forecast*" OR "random forest" OR "neural network*" OR "deep learning" OR "regression model*" OR "time series") AND TITLE-ABS-KEY ("urban" OR "city" OR "population health" OR "metropolitan" OR "public health") ) AND NOT TITLE-ABS-KEY(cancer OR cancers OR cancerous) AND ( LIMIT-TO ( DOCTYPE,"ar" ) )
+
+String de Busca 2:
+
+(TITLE("machine learning" OR "random forest" OR "neural network" OR "deep learning" OR "Predicting") AND TITLE-ABS-KEY ("air quality" OR "air pollut*" OR pollutant* OR "particulate matter" OR "nitrogen dioxide" OR "carbon monoxide" OR ozone OR "sulfur dioxide") AND TITLE-ABS-KEY ("respiratory disease*" OR "respiratory admission*" OR "respiratory hospitalization*") AND TITLE-ABS-KEY ("machine learning" OR "predictive model*" OR "forecast*" OR "random forest" OR "regression model*") AND TITLE-ABS-KEY ("urban" OR "city") ) AND ( LIMIT-TO ( DOCTYPE,"ar" ) )
+
