@@ -71,14 +71,14 @@ def load_sus_data():
     'sus_2019': 'https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/datasus/dados_filtrados_2019.csv'
   }
   
-  url_sus_2012 = 'data\datasus\dados_filtrados_2012.csv'
-  url_sus_2013 = 'data\datasus\dados_filtrados_2013.csv'
-  url_sus_2014 = 'data\datasus\dados_filtrados_2014.csv'
-  url_sus_2015 = 'data\datasus\dados_filtrados_2015.csv'
-  url_sus_2016 = 'data\datasus\dados_filtrados_2016.csv'
-  url_sus_2017 = 'data\datasus\dados_filtrados_2017.csv'
-  url_sus_2018 = 'data\datasus\dados_filtrados_2018.csv'
-  url_sus_2019 = 'data\datasus\dados_filtrados_2019.csv'
+  url_sus_2012 = 'data/datasus/dados_filtrados_2012.csv'
+  url_sus_2013 = 'data/datasus/dados_filtrados_2013.csv'
+  url_sus_2014 = 'data/datasus/dados_filtrados_2014.csv'
+  url_sus_2015 = 'data/datasus/dados_filtrados_2015.csv'
+  url_sus_2016 = 'data/datasus/dados_filtrados_2016.csv'
+  url_sus_2017 = 'data/datasus/dados_filtrados_2017.csv'
+  url_sus_2018 = 'data/datasus/dados_filtrados_2018.csv'
+  url_sus_2019 = 'data/datasus/dados_filtrados_2019.csv'
   
   df_sus_2012 = pd.read_csv(url_sus_2012, sep=',')
   df_sus_2013 = pd.read_csv(url_sus_2013, sep=',')
