@@ -7,6 +7,7 @@ from scipy import stats
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import pages.sensores.Geral as geral
+import pages.sensores.Estacoes as estacoes_page
 
 def aggregate_general_data(df, poluentes):
     """Agrega dados de todas as estações para a opção 'Geral'"""
@@ -18,6 +19,44 @@ def aggregate_general_data(df, poluentes):
 def show(df_sensor, POLUENTES_TRADUCAO, month_names):
     st.title("🏭 Análise Comparativa de Sensores Ambientais")
     df_sensor['ano'] = df_sensor['ano'].astype(int)
+    
+    # Adicionando informações sobre o dataset
+    with st.expander("ℹ️ Sobre os dados"):
+        st.markdown("""
+        Este dataset contém informações de qualidade do ar coletadas por estações de monitoramento na cidade do Rio de Janeiro.
+        Cada registro representa uma medição. As medições são feitas a cada hora e com as seguintes informações:
+
+        ### 📍 Informações da Estação
+        - **nome_estacao**: Nome da estação de monitoramento
+        - **latitude/longitude**: Coordenadas geográficas da estação
+        - **data**: Data e hora da medição
+        - **ano/mes**: Ano e mês da medição
+
+        ### 🌡️ Variáveis Meteorológicas
+        - **temp**: Temperatura em graus Celsius
+        - **ur**: Umidade relativa do ar (%)
+        - **chuva**: Precipitação em milímetros
+
+        ### 🏭 Poluentes Atmosféricos
+        - **co**: Monóxido de carbono (ppm)
+        - **no**: Óxido nítrico (µg/m³)
+        - **no2**: Dióxido de nitrogênio (µg/m³)
+        - **so2**: Dióxido de enxofre (µg/m³)
+        - **o3**: Ozônio (µg/m³)
+        - **pm10**: Material particulado ≤10µm (µg/m³)
+        - **pm2_5**: Material particulado ≤2.5µm (µg/m³)
+
+        ### Estações Disponíveis:
+        - ESTAÇÃO BANGU
+        - ESTAÇÃO CAMPO GRANDE
+        - ESTAÇÃO CENTRO
+        - ESTAÇÃO COPACABANA
+        - ESTAÇÃO IRAJÁ
+        - ESTAÇÃO PEDRA DE GUARATIBA
+        - ESTAÇÃO SÃO CRISTÓVÃO
+        - ESTAÇÃO TIJUCA
+        """)
+        
     # Sidebar com controles
     with st.sidebar:
         st.header("⚙️ Configurações de Filtro")
@@ -34,6 +73,10 @@ def show(df_sensor, POLUENTES_TRADUCAO, month_names):
     if 'GERAL (Média RJ)' in selected_estacoes:
         st.warning("A opção 'GERAL (Média RJ)' agregará os dados de todas as estações.")
         geral.show(df_sensor, POLUENTES_TRADUCAO, month_names)
+    elif 'GERAL (Média RJ)' not in selected_estacoes:
+        st.error("Comparação entre estações não foi implementada ainda. Apenas a opção 'GERAL (Média RJ)' está disponível no momento.")
+        # estacoes_page.show(df_sensor, POLUENTES_TRADUCAO, month_names, selected_estacoes)
+        pass
     #     else:
     #         st.info("Selecione 'GERAL (Média RJ)' para ver a média de todas as estações.")
     #     # Seleção de poluentes

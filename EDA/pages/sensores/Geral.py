@@ -20,7 +20,7 @@ def show(df_sensor, POLUENTES_TRADUCAO, month_names):
                 'Selecione os poluentes:', 
                 options=list(POLUENTES_TRADUCAO.keys()),
                 format_func=lambda x: POLUENTES_TRADUCAO[x],
-                default=['temp', 'pm2_5'],
+                default=['temp'],
                 key='poluentes_multiselect_general'
             )
         

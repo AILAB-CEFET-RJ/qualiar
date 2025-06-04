@@ -7,7 +7,135 @@ from plotly.subplots import make_subplots
 
 def show(df_sensor_boxcox, df_sus_aggregated):
     st.title("📈 Relação entre Poluentes e Doenças Respiratórias")
-  
+    
+    # Adicionando informações sobre os datasets
+    with st.expander("ℹ️ Sobre os dados"):
+        st.markdown("""
+        ### 🏥 Dados de Internações (df_sus_aggregated)
+        Este dataset contém informações agregadas sobre internações por doenças respiratórias no município do Rio de Janeiro.
+
+        **Como foi construído:**
+        - Filtrado para incluir apenas o município do Rio de Janeiro (código 330455)
+        - Agregado por mês/ano contando o número de internações
+        - Dados originais do Sistema Único de Saúde (SUS)
+
+        **Estrutura do dataset:**
+        - `ano`: Ano da internação (2012-2019)
+        - `mes`: Mês da internação (1-12)
+        - `mes_ano`: Combinação de mês e ano no formato 'MM-AAAA'
+        - `num_internacoes`: Contagem total de internações no mês
+
+        **Fonte original:**  
+        Dados processados a partir do Sistema de Informações Hospitalares do SUS (SIH/SUS)
+        """)
+
+        st.markdown("""
+        ### 🌫️ Dados de Poluentes (df_sensor_boxcox)
+        Esse dataset contém medições de poluentes atmosféricos e condições climáticas no município do Rio de Janeiro, com dados transformados usando a técnica Box-Cox para normalização
+        
+        **Como foi construído:**
+        - Filtragem temporal para o período de 2012 a 2019
+        - Tratamento de dados faltantes
+        - Aplicação da transformação Box-Cox para normalizar as distribuições dos poluentes
+        - Aplicação do StandardScaler para escalonar os dados das colunas de Temperatura, NOx, PM2.5, PM10 e Ozônio
+        
+        **Estrutura do dataset:**
+        - `ano`: Ano da medição (2012-2019)
+        - `mes`: Mês da medição (1-12)
+        - `mes_ano`: Combinação de mês e ano no formato 'MM-AAAA'
+        - `pm2_5`: Concentração de PM2.5 (µg/m³)
+        - `pm10`: Concentração de PM10 (µg/m³)
+        - `co`: Concentração de CO (ppm)
+        - `no`: Concentração de NO (µg/m³)
+        - `no2`: Concentração de NO₂ (µg/m³)
+        - `nox`: Concentração de NOx (µg/m³)
+        - `so2`: Concentração de SO₂ (µg/m³)
+        - `o3`: Concentração de Ozônio (µg/m³)
+        - `chuva`: Precipitação (mm)
+        - `temp`: Temperatura (°C)
+        - `ur`: Umidade relativa (%)
+        
+        **Fonte original:**
+        Dados coletados de estações de monitoramento da qualidade do ar no município do Rio de Janeiro
+        """)
+
+        # Adicionando detalhes do pré-processamento aqui
+        st.markdown("""
+        <details>
+        <summary><strong>🔍 Detalhes do Pré-processamento (df_sensor_boxcox)</strong></summary>
+        <br>
+
+        ## 📌 Processamento Estatístico Avançado
+
+        ### 1️⃣ Filtragem Temporal (2012-2019)
+
+        **Por que fizemos?** Para garantir compatibilidade temporal com os dados de saúde (SIH/SUS).  
+        **Método:** Isolamos apenas os registros dentro deste período.
+
+        ---
+        ### 2️⃣ Divisão por estação
+        
+        **Por que fizemos?** Para analisar cada estação de monitoramento separadamente, permitindo insights mais específicos.
+        **Método:** Filtramos os dados por estação de monitoramento, mantendo apenas as colunas relevantes.
+        ---
+
+        ### 3️⃣ Tratamento de Dados Faltantes
+
+        **Problema identificado:** Lacunas temporais nas séries de poluentes.  
+        **Solução implementada:**
+
+        - **Interpolação limitada (≤6 horas):** Preenchemos apenas dias com até 6 horas de dados faltantes
+        - **Critério técnico:** Evitar distorções na variabilidade natural dos poluentes
+        - **Exemplo prático:**
+        ```python
+        # Cálculo de janelas válidas para interpolação
+        df_sensor_bangu['chuva_nulos_no_dia'] = (
+            df_sensor_bangu['chuva'].isnull()
+            .groupby(df_sensor_bangu['data_formatada'])
+            .transform('sum')
+        )
+        mask = (df_sensor_bangu['chuva_nulos_no_dia'] <= 6)  # 6 horas = 25% do dia
+        ```
+        ---
+        ### 4️⃣ Transformação Box-Cox
+        **Objetivo:** Normalizar distribuições de poluentes para análises estatísticas mais robustas.
+        **Método:** Aplicamos a transformação Box-Cox, que é adequada para dados com distribuição assimétrica.
+        **Exemplo prático:**
+        ```python
+        chuva_boxcox, lambda_boxcox = stats.boxcox(chuva_validos + 1)  # +1 para evitar zeros
+        ```
+        ---
+        ### 5️⃣ Escalonamento de Variáveis
+        **Objetivo:** Padronizar as variáveis para facilitar comparações e visualizações.
+        **Método:** Utilizamos o `StandardScaler` do scikit-learn para escalonar as variáveis de poluentes e condições climáticas.
+        **Variaveis escalonadas:** Temperatura, NOx, PM2.5, PM10 e Ozônio
+        **Motivo:** Variáveis com mais correlação com internações, facilitando a análise comparativa.
+        </details>
+        """, unsafe_allow_html=True)
+
+        # Adicionando estilo CSS para melhorar a visualização
+        st.markdown("""
+        <style>
+            .data-info {
+                background-color: #f8f9fa;
+                border-radius: 5px;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-left: 4px solid #6c757d;
+            }
+            .data-title {
+                color: #2c3e50;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }
+            details summary {
+                cursor: pointer;
+                font-size: 1.1em;
+                margin-top: 10px;
+                margin-bottom: 10px;
+            }
+        </style>
+        """, unsafe_allow_html=True)
     df_merged = pd.merge(df_sensor_boxcox, df_sus_aggregated, on=['ano', 'mes'], how='inner')
     
     # Seleção e cálculo da correlação
@@ -224,7 +352,7 @@ def show(df_sensor_boxcox, df_sus_aggregated):
         'Selecione um ou mais poluentes para análise:',
         options=list(poluentes_disponiveis.keys()),
         format_func=lambda x: poluentes_disponiveis[x],
-        default=['pm10_scaled', 'o3_scaled']
+        default=['temp_scaled', 'nox_scaled']
     )
 
     if poluentes_selecionados:
