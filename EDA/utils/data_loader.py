@@ -6,14 +6,14 @@ from utils.config import POLUENTES_TRADUCAO, POLUENTES_SCALED
 # Carregamento dos dados
 @st.cache_data
 def load_sensor_data():
-    url_bangu = 'data\Sensors\por_estacao\df_sensor_bangu_preenchido.csv'
-    url_campo_grande = 'data\Sensors\por_estacao\df_sensor_campo_grande_preenchido.csv'
-    url_pedra_guaratiba = 'data\Sensors\por_estacao\df_sensor_pedra_guaratiba_preenchido.csv'
-    url_iraja = 'data\Sensors\por_estacao\df_sensor_iraja_preenchido.csv'
-    url_sao_cristovao = 'data\Sensors\por_estacao\df_sensor_sao_cristovao_preenchido.csv'
-    url_tijuca = 'data\Sensors\por_estacao\df_sensor_tijuca_preenchido.csv'
-    url_centro = 'data\Sensors\por_estacao\df_sensor_centro_preenchido.csv'
-    url_copacabana = 'data\Sensors\por_estacao\df_sensor_copacabana_preenchido.csv'
+    url_bangu = 'data/Sensors/por_estacao/df_sensor_bangu_preenchido.csv'
+    url_campo_grande = 'data/Sensors/por_estacao/df_sensor_campo_grande_preenchido.csv'
+    url_pedra_guaratiba = 'data/Sensors/por_estacao/df_sensor_pedra_guaratiba_preenchido.csv'
+    url_iraja = 'data/Sensors/por_estacao/df_sensor_iraja_preenchido.csv'
+    url_sao_cristovao = 'data/Sensors/por_estacao/df_sensor_sao_cristovao_preenchido.csv'
+    url_tijuca = 'data/Sensors/por_estacao/df_sensor_tijuca_preenchido.csv'
+    url_centro = 'data/Sensors/por_estacao/df_sensor_centro_preenchido.csv'
+    url_copacabana = 'data/Sensors/por_estacao/df_sensor_copacabana_preenchido.csv'
     
     df_sensor_bangu = pd.read_csv(url_bangu, sep=',')
     df_sensor_campo_grande = pd.read_csv(url_campo_grande, sep=',')
@@ -44,7 +44,7 @@ def load_sensor_data():
 # Carregamento dos dados
 @st.cache_data
 def load_sensor_boxcox_data():
-  url_sensor_boxcox = 'data\Sensors\medicoes-sensores-boxcox.csv'
+  url_sensor_boxcox = 'data/Sensors/medicoes-sensores-boxcox.csv'
 
   df_sensor = pd.read_csv(url_sensor_boxcox, sep=',')
   
