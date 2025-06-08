@@ -108,11 +108,21 @@ def load_sus_data():
   
   df_sus = df_sus[df_sus['UF_ZI'] == municipios_rio_de_janeiro]
 
-  df_sus_aggregated = df_sus.groupby(['ANO_CMPT', 'MES_CMPT']).agg(
+  df_sus['data_formatada'] = pd.to_datetime(df_sus['DT_INTER'], format='%Y%m%d').dt.strftime('%Y-%m-%d')
+
+  df_sus.sort_values(by='data_formatada', inplace=True)
+
+  df_sus = df_sus[(df_sus['data_formatada'] > '2012-01-01')]
+
+  df_sus['data_formatada_dt'] = pd.to_datetime(df_sus['data_formatada'])
+
+  df_sus['ano'] = df_sus['data_formatada_dt'].dt.year
+  df_sus['mes'] = df_sus['data_formatada_dt'].dt.month
+
+  df_sus_aggregated = df_sus.groupby(['ano', 'mes']).agg(
       num_internacoes=('DT_INTER', 'count')
   ).reset_index()
   
-  df_sus_aggregated = df_sus_aggregated.rename(columns={'ANO_CMPT': 'ano', 'MES_CMPT': 'mes'})
   df_sus_aggregated['mes_ano'] = df_sus_aggregated['ano'].astype(str) + '-' + df_sus_aggregated['mes'].astype(str)
   
   return df_sus, df_sus_aggregated
