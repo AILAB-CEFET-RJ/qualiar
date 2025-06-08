@@ -112,7 +112,7 @@ def load_sus_data():
 
   df_sus.sort_values(by='data_formatada', inplace=True)
 
-  df_sus = df_sus[(df_sus['data_formatada'] > '2012-01-01')]
+  df_sus = df_sus[(df_sus['data_formatada'] >= '2012-01-01')]
 
   df_sus['data_formatada_dt'] = pd.to_datetime(df_sus['data_formatada'])
 
