@@ -60,8 +60,7 @@ Three different predictive models were developed:
 
 - **Architecture**:
   - LSTM (128 units) → Dropout(0.2)
-  - LSTM (64 units) → Dropout(0.2)
-  - Dense(32) with `tanh` activation
+  - LSTM (64 units) → Dropout(0.2) - Dense(32) with `tanh` activation
   - Output: Dense(1)
 
 - **Training Setup**:
