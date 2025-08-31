@@ -6,7 +6,7 @@ import io
 
 @st.cache_data
 def load_estacoes_data():
-    url_estacoes_unificadas = 'https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/DataRio/Estacoes_Tratadas_Por_Dia/ESTACOES_UNIFICADAS_POR_DIA.csv'
+    url_estacoes_unificadas = 'data\DataRio\Estacoes_Tratadas_Por_Dia\ESTACOES_UNIFICADAS_POR_DIA.csv'
     
     df_estacoes_unificadas = pd.read_csv(url_estacoes_unificadas, sep=',')
     
@@ -14,7 +14,7 @@ def load_estacoes_data():
 
 @st.cache_data
 def load_rio_de_janeiro_qualiar_data():
-  url_rio_de_janeiro_qualiar = r'https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/DataRio/QUALIAR_RIO_DE_JANEIRO.csv'
+  url_rio_de_janeiro_qualiar = r'data\DataRio\QUALIAR_RIO_DE_JANEIRO.csv'
   
   df_rio_de_janeiro_qualiar = pd.read_csv(url_rio_de_janeiro_qualiar, sep=',')
   
@@ -22,7 +22,7 @@ def load_rio_de_janeiro_qualiar_data():
   
 @st.cache_data
 def load_rio_de_janeiro_qualiar_treated_data():
-  url_rio_de_janeiro_qualiar_treated = r'https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/DataRio/QUALIAR_RIO_DE_JANEIRO_TRATADO.csv'
+  url_rio_de_janeiro_qualiar_treated = r'data\DataRio\QUALIAR_RIO_DE_JANEIRO_TRATADO.csv'
   
   df_rio_de_janeiro_qualiar_treated = pd.read_csv(url_rio_de_janeiro_qualiar_treated, sep=',')
   
@@ -31,24 +31,21 @@ def load_rio_de_janeiro_qualiar_treated_data():
 @st.cache_data(show_spinner=True)
 def load_sus_data() -> pd.DataFrame:
     """
-    Lê os CSVs anuais diretamente do GitHub e concatena em um único DataFrame.
-    Converte DT_INTER e DT_SAIDA para datetime no formato exigido (%Y%m%d).
+    Lê os dois arquivos ZIP locais e concatena em um único DataFrame.
     NÃO altera nomes de colunas — usa exatamente os do CSV.
     """
-    url1 = "https://github.com/AILAB-CEFET-RJ/qualiar/raw/main/data/datasus/INTERNACOES_STREAMLIT_parte1.zip"
-    url2 = "https://github.com/AILAB-CEFET-RJ/qualiar/raw/main/data/datasus/INTERNACOES_STREAMLIT_parte2.zip"
+    zip_path1 = r"data/datasus/INTERNACOES_STREAMLIT_parte1.zip"
+    zip_path2 = r"data/datasus/INTERNACOES_STREAMLIT_parte2.zip"
 
-    def read_zip_csv_from_url(url):
-        response = requests.get(url)
-        response.raise_for_status()
-        zip_file = zipfile.ZipFile(io.BytesIO(response.content))
-        print(f"Arquivos no ZIP ({url}): {zip_file.namelist()}")
-        with zip_file.open(zip_file.namelist()[0]) as file:
-            df = pd.read_csv(file)
+    def read_zip_csv_from_path(path):
+        with zipfile.ZipFile(path, "r") as zip_file:
+            print(f"Arquivos no ZIP ({path}): {zip_file.namelist()}")
+            with zip_file.open(zip_file.namelist()[0]) as file:
+                df = pd.read_csv(file)
         return df
 
-    df1 = read_zip_csv_from_url(url1)
-    df2 = read_zip_csv_from_url(url2)
+    df1 = read_zip_csv_from_path(zip_path1)
+    df2 = read_zip_csv_from_path(zip_path2)
 
     df_sus = pd.concat([df1, df2], ignore_index=True)
     
