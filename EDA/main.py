@@ -15,12 +15,12 @@ pagina_selecionada = st.sidebar.radio(
     ["🌆 Qualidade do ar Rio", "🩺 Dados de Saúde", "🗺️ Estações (EDA)", "📈 Poluentes x Doenças"]
 )
 
-@st.cache_data(show_spinner=True)
-def _get_sus_prepared():
-    df_raw = load_sus_data() 
-    return df_raw
+# @st.cache_data(show_spinner=True)
+# def _get_sus_prepared():
+#     df_raw = load_sus_data() 
+#     return df_raw
 
-df_sus = _get_sus_prepared()
+# df_sus = _get_sus_prepared()
 
 @st.cache_data(show_spinner=True)
 def _get_estacoes_data():
@@ -82,10 +82,12 @@ if pagina_selecionada == "🌆 Qualidade do ar Rio":
     analise_rio.show(df_rio)
 
 elif pagina_selecionada == "🩺 Dados de Saúde":
-    dados_saude.show(df_sus)
+    pass
+    # dados_saude.show(df_sus)
 
 elif pagina_selecionada == "🗺️ Estações (EDA)":
     analise_estacoes.show(df_estacoes)
 
 elif pagina_selecionada == "📈 Poluentes x Doenças":
-    poluentes_doencas.show(df_sus, df_rio_treated)
+    pass
+    # poluentes_doencas.show(df_sus, df_rio_treated)

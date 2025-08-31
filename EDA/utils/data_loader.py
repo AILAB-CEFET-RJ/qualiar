@@ -6,7 +6,7 @@ import io
 
 @st.cache_data
 def load_estacoes_data():
-    url_estacoes_unificadas = 'data\DataRio\Estacoes_Tratadas_Por_Dia\ESTACOES_UNIFICADAS_POR_DIA.csv'
+    url_estacoes_unificadas = r'data/DataRio/Estacoes_Tratadas_Por_Dia/ESTACOES_UNIFICADAS_POR_DIA.csv'
     
     df_estacoes_unificadas = pd.read_csv(url_estacoes_unificadas, sep=',')
     
@@ -14,7 +14,7 @@ def load_estacoes_data():
 
 @st.cache_data
 def load_rio_de_janeiro_qualiar_data():
-  url_rio_de_janeiro_qualiar = r'data\DataRio\QUALIAR_RIO_DE_JANEIRO.csv'
+  url_rio_de_janeiro_qualiar = r'data/DataRio/QUALIAR_RIO_DE_JANEIRO.csv'
   
   df_rio_de_janeiro_qualiar = pd.read_csv(url_rio_de_janeiro_qualiar, sep=',')
   
@@ -22,7 +22,7 @@ def load_rio_de_janeiro_qualiar_data():
   
 @st.cache_data
 def load_rio_de_janeiro_qualiar_treated_data():
-  url_rio_de_janeiro_qualiar_treated = r'data\DataRio\QUALIAR_RIO_DE_JANEIRO_TRATADO.csv'
+  url_rio_de_janeiro_qualiar_treated = r'data/DataRio/QUALIAR_RIO_DE_JANEIRO_TRATADO.csv'
   
   df_rio_de_janeiro_qualiar_treated = pd.read_csv(url_rio_de_janeiro_qualiar_treated, sep=',')
   
