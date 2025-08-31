@@ -41,6 +41,7 @@ def load_sus_data() -> pd.DataFrame:
     for ano in anos:
         df = pd.read_csv(generic_url.format(ano=ano), sep=",")
         frames.append(df)
+        print(f"Carregado dados do SUS para o ano {ano}")
 
     df_sus = pd.concat(frames, ignore_index=True)
 
