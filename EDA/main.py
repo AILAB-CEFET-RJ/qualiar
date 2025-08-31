@@ -1,45 +1,92 @@
 import streamlit as st
-from utils.config import POLUENTES_TRADUCAO, month_names
-from utils.data_loader import load_sensor_data, load_sus_data, load_sensor_boxcox_data
+import pandas as pd
+from utils.config import POLUENTES_TRADUCAO, month_names  
+from utils.data_loader import load_sus_data, prepare_sus_df, load_estacoes_data, load_rio_de_janeiro_qualiar_data, load_rio_de_janeiro_qualiar_treated_data
 import pages.poluentes_doencas.Poluentes_Doencas as poluentes_doencas
-import pages.sensores.Analise_Sensores as analise_sensores
 import pages.sus.Dados_Saude as dados_saude
+import pages.estacoes.Analise_Estacoes as analise_estacoes
+import pages.rio.Analise_Rio as analise_rio
 
-# Configuração inicial
 st.set_page_config(page_title="Análise Ambiental e de Saúde", layout="wide")
 
-# Sidebar - Navegação
 st.sidebar.title("Menu de Navegação")
 pagina_selecionada = st.sidebar.radio(
     "Selecione a página:",
-    ["🏭 Análise de Sensores", "🩺 Dados de Saúde", "📈 Poluentes x Doenças"]
+    ["🌆 Qualidade do ar Rio", "🩺 Dados de Saúde", "🗺️ Estações (EDA)", "📈 Poluentes x Doenças"]
 )
 
-# Carregar os dados 
-df_sensor, poluentes = load_sensor_data()
-df_sus, df_sus_aggregated = load_sus_data()
-df_sensor_boxcox = load_sensor_boxcox_data()
+@st.cache_data(show_spinner=True)
+def _get_sus_prepared():
+    df_raw = load_sus_data()
+    df_prepared = prepare_sus_df(df_raw)
+    return df_prepared
 
-# Adicionar colunas de latitude e longitude ao df_sensor
-estacoes_coords = {
-  "ESTAÇÃO BANGU": (-22.887910, -43.471074),
-  "ESTAÇÃO CAMPO GRANDE": (-22.886255, -43.556522),
-  "ESTAÇÃO CENTRO": (-22.908344, -43.178152),
-  "ESTAÇÃO COPACABANA": (-22.965004, -43.180482),
-  "ESTAÇÃO IRAJÁ": (-22.831621, -43.326845),
-  "ESTAÇÃO PEDRA DE GUARATIBA": (-23.004379, -43.629010),
-  "ESTAÇÃO SÃO CRISTÓVÃO": (-22.897771, -43.221745),
-  "ESTAÇÃO TIJUCA": (-22.924915, -43.232657),
-}
+df_sus = _get_sus_prepared()
 
-df_sensor["latitude"] = df_sensor["nome_estacao"].map(lambda x: estacoes_coords.get(x, (None, None))[0])
-df_sensor["longitude"] = df_sensor["nome_estacao"].map(lambda x: estacoes_coords.get(x, (None, None))[1])
+@st.cache_data(show_spinner=True)
+def _get_estacoes_data():
+    df = load_estacoes_data()
+    return df
+
+df_estacoes = _get_estacoes_data()
+
+@st.cache_data(show_spinner=True)
+def _get_rio_prepared():
+    df = load_rio_de_janeiro_qualiar_data()
+
+    if "data_dia" in df.columns:
+        df["data_dia"] = pd.to_datetime(df["data_dia"], format="%Y-%m-%d", errors="coerce")
+
+    if "ano" not in df.columns and "data_dia" in df.columns:
+        df["ano"] = df["data_dia"].dt.year
+    if "mes" not in df.columns and "data_dia" in df.columns:
+        df["mes"] = df["data_dia"].dt.month
+
+    num_cols = ["chuva","temp","ur","co","no","no2","nox","so2","o3","pm10","pm2_5","AQI"]
+    for c in num_cols:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    if "data_dia" in df.columns:
+        df["ano_mes"] = df["data_dia"].dt.to_period("M").astype(str)
+
+    return df
+
+df_rio = _get_rio_prepared()
+
+@st.cache_data(show_spinner=True)
+def _get_rio_prepared_treated():
+    df = load_rio_de_janeiro_qualiar_treated_data()
+
+    if "data_dia" in df.columns:
+        df["data_dia"] = pd.to_datetime(df["data_dia"], format="%Y-%m-%d", errors="coerce")
+
+    if "ano" not in df.columns and "data_dia" in df.columns:
+        df["ano"] = df["data_dia"].dt.year
+    if "mes" not in df.columns and "data_dia" in df.columns:
+        df["mes"] = df["data_dia"].dt.month
+
+    num_cols = ["chuva","temp","ur","co","no","no2","nox","so2","o3","pm10","pm2_5","AQI"]
+    for c in num_cols:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    if "data_dia" in df.columns:
+        df["ano_mes"] = df["data_dia"].dt.to_period("M").astype(str)
+
+    return df
+
+df_rio_treated = _get_rio_prepared_treated()
 
 # Roteamento para páginas
-if pagina_selecionada == "🏭 Análise de Sensores":
-  analise_sensores.show(df_sensor, POLUENTES_TRADUCAO, month_names)
+if pagina_selecionada == "🌆 Qualidade do ar Rio":
+    analise_rio.show(df_rio)
+
 elif pagina_selecionada == "🩺 Dados de Saúde":
-  dados_saude.show(df_sus, df_sus_aggregated, month_names)
-  # dados_saude.show(df_sus, df_sus_aggregated)
+    dados_saude.show(df_sus)
+
+elif pagina_selecionada == "🗺️ Estações (EDA)":
+    analise_estacoes.show(df_estacoes)
+
 elif pagina_selecionada == "📈 Poluentes x Doenças":
-  poluentes_doencas.show(df_sensor_boxcox, df_sus_aggregated)
+    poluentes_doencas.show(df_sus, df_rio_treated)

@@ -1,655 +1,609 @@
 import streamlit as st
-import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from statsmodels.tsa.stattools import pacf as pacf_vals_fn
 
-def show(df_sensor_boxcox, df_sus_aggregated):
-    st.title("📈 Relação entre Poluentes e Doenças Respiratórias")
-    
-    # Adicionando informações sobre os datasets
-    with st.expander("ℹ️ Sobre os dados"):
-        st.markdown("""
-        ### 🏥 Dados de Internações (df_sus_aggregated)
-        Este dataset contém informações agregadas sobre internações por doenças respiratórias no município do Rio de Janeiro.
+# -------------------------
+# Helpers
+# -------------------------
+def _ms_todos(label: str, options, current=None, key: str = None):
+    """Multiselect com 'Todos'. Retorna lista de strings."""
+    options = sorted({str(o) for o in options})
+    token = "Todos"
+    mult_opts = [token] + options
 
-        **Como foi construído:**
-        - Filtrado para incluir apenas o município do Rio de Janeiro (código 330455)
-        - Agregado por mês/ano contando o número de internações
-        - Dados originais do Sistema Único de Saúde (SUS)
-
-        **Estrutura do dataset:**
-        - `ano`: Ano da internação (2012-2019)
-        - `mes`: Mês da internação (1-12)
-        - `mes_ano`: Combinação de mês e ano no formato 'MM-AAAA'
-        - `num_internacoes`: Contagem total de internações no mês
-
-        **Fonte original:**  
-        Dados processados a partir do Sistema de Informações Hospitalares do SUS (SIH/SUS)
-        """)
-
-        st.markdown("""
-        ### 🌫️ Dados de Poluentes (df_sensor_boxcox)
-        Esse dataset contém medições de poluentes atmosféricos e condições climáticas no município do Rio de Janeiro, com dados transformados usando a técnica Box-Cox para normalização
-        
-        **Como foi construído:**
-        - Filtragem temporal para o período de 2012 a 2019
-        - Tratamento de dados faltantes
-        - Aplicação da transformação Box-Cox para normalizar as distribuições dos poluentes
-        - Aplicação do StandardScaler para escalonar os dados das colunas de Temperatura, NOx, PM2.5, PM10 e Ozônio
-        
-        **Estrutura do dataset:**
-        - `ano`: Ano da medição (2012-2019)
-        - `mes`: Mês da medição (1-12)
-        - `mes_ano`: Combinação de mês e ano no formato 'MM-AAAA'
-        - `pm2_5`: Concentração de PM2.5 (µg/m³)
-        - `pm10`: Concentração de PM10 (µg/m³)
-        - `co`: Concentração de CO (ppm)
-        - `no`: Concentração de NO (µg/m³)
-        - `no2`: Concentração de NO₂ (µg/m³)
-        - `nox`: Concentração de NOx (µg/m³)
-        - `so2`: Concentração de SO₂ (µg/m³)
-        - `o3`: Concentração de Ozônio (µg/m³)
-        - `chuva`: Precipitação (mm)
-        - `temp`: Temperatura (°C)
-        - `ur`: Umidade relativa (%)
-        
-        **Fonte original:**
-        Dados coletados de estações de monitoramento da qualidade do ar no município do Rio de Janeiro
-        """)
-
-        # Adicionando detalhes do pré-processamento aqui
-        st.markdown("""
-        <details>
-        <summary><strong>🔍 Detalhes do Pré-processamento (df_sensor_boxcox)</strong></summary>
-        <br>
-
-        ## 📌 Processamento Estatístico Avançado
-
-        ### 1️⃣ Filtragem Temporal (2012-2019)
-
-        **Por que fizemos?** Para garantir compatibilidade temporal com os dados de saúde (SIH/SUS).  
-        **Método:** Isolamos apenas os registros dentro deste período.
-
-        ---
-        ### 2️⃣ Divisão por estação
-        
-        **Por que fizemos?** Para analisar cada estação de monitoramento separadamente, permitindo insights mais específicos.
-        **Método:** Filtramos os dados por estação de monitoramento, mantendo apenas as colunas relevantes.
-        ---
-
-        ### 3️⃣ Tratamento de Dados Faltantes
-
-        **Problema identificado:** Lacunas temporais nas séries de poluentes.  
-        **Solução implementada:**
-
-        - **Interpolação limitada (≤6 horas):** Preenchemos apenas dias com até 6 horas de dados faltantes
-        - **Critério técnico:** Evitar distorções na variabilidade natural dos poluentes
-        - **Exemplo prático:**
-        ```python
-        # Cálculo de janelas válidas para interpolação
-        df_sensor_bangu['chuva_nulos_no_dia'] = (
-            df_sensor_bangu['chuva'].isnull()
-            .groupby(df_sensor_bangu['data_formatada'])
-            .transform('sum')
-        )
-        mask = (df_sensor_bangu['chuva_nulos_no_dia'] <= 6)  # 6 horas = 25% do dia
-        ```
-        ---
-        ### 4️⃣ Transformação Box-Cox
-        **Objetivo:** Normalizar distribuições de poluentes para análises estatísticas mais robustas.
-        **Método:** Aplicamos a transformação Box-Cox, que é adequada para dados com distribuição assimétrica.
-        **Exemplo prático:**
-        ```python
-        chuva_boxcox, lambda_boxcox = stats.boxcox(chuva_validos + 1)  # +1 para evitar zeros
-        ```
-        ---
-        ### 5️⃣ Escalonamento de Variáveis
-        **Objetivo:** Padronizar as variáveis para facilitar comparações e visualizações.
-        **Método:** Utilizamos o `StandardScaler` do scikit-learn para escalonar as variáveis de poluentes e condições climáticas.
-        **Variaveis escalonadas:** Temperatura, NOx, PM2.5, PM10 e Ozônio
-        **Motivo:** Variáveis com mais correlação com internações, facilitando a análise comparativa.
-        </details>
-        """, unsafe_allow_html=True)
-
-        # Adicionando estilo CSS para melhorar a visualização
-        st.markdown("""
-        <style>
-            .data-info {
-                background-color: #f8f9fa;
-                border-radius: 5px;
-                padding: 15px;
-                margin-bottom: 15px;
-                border-left: 4px solid #6c757d;
-            }
-            .data-title {
-                color: #2c3e50;
-                font-weight: bold;
-                margin-bottom: 10px;
-            }
-            details summary {
-                cursor: pointer;
-                font-size: 1.1em;
-                margin-top: 10px;
-                margin-bottom: 10px;
-            }
-        </style>
-        """, unsafe_allow_html=True)
-    df_merged = pd.merge(df_sensor_boxcox, df_sus_aggregated, on=['ano', 'mes'], how='inner')
-    
-    # Seleção e cálculo da correlação
-    variaveis = ['pm2_5', 'pm10', 'co', 'o3', 'no', 'no2', 'nox', 'so2', 'chuva', 'temp', 'ur', 'num_internacoes']
-    correlation_matrix = df_merged[variaveis].corr()
-
-    # Mapeamento de nomes amigáveis
-    nome_colunas = {
-        'pm2_5': 'PM2.5', 
-        'pm10': 'PM10',
-        'co': 'CO',
-        'o3': 'Ozônio',
-        'no': 'NO',
-        'no2': 'NO₂',
-        'nox': 'NOx',
-        'so2': 'SO₂',
-        'chuva': 'Chuva',
-        'temp': 'Temperatura',
-        'ur': 'Umidade',
-        'num_internacoes': 'Internações'
-    }
-
-    # Aplica os nomes amigáveis
-    correlation_matrix = correlation_matrix.rename(columns=nome_colunas, index=nome_colunas)
-
-    # Criação do heatmap interativo com Plotly
-    fig = go.Figure(data=go.Heatmap(
-        z=correlation_matrix.values,
-        x=correlation_matrix.columns,
-        y=correlation_matrix.index,
-        colorscale='RdBu_r',  # Escala divergente vermelho-azul (invertida)
-        zmin=-1,
-        zmax=1,
-        hoverongaps=False,
-        text=correlation_matrix.round(2).values,
-        texttemplate="%{text}",
-        textfont={"size":16},
-        colorbar=dict(
-            title='Correlação',
-            thickness=15,
-            len=0.75
-        )
-    ))
-
-    # Configurações do layout
-    fig.update_layout(
-        title='<b>Matriz de Correlação: Poluentes vs Internações</b>',
-        title_x=0.40,  # Centraliza o título
-        title_y=0.95, # Ajusta a posição vertical do título (mais acima)
-        title_font_size=18,
-        width=700,
-        height=600,
-        xaxis=dict(
-            tickangle=45,
-            color='black',
-            tickfont=dict(size=12),
-            side='top'
-        ),
-        yaxis=dict(
-            tickfont=dict(size=12),
-            autorange='reversed'  # Inverte o eixo Y para ficar igual ao Seaborn
-        ),
-        margin=dict(l=100, r=50, t=120, b=100),  # Aumenta o topo para dar espaço ao título
-        paper_bgcolor="#b0b0b0"
-    )
-
-    # Destacar valores importantes (|correlação| >= 0.45)
-    for i, row in enumerate(correlation_matrix.values):
-        for j, value in enumerate(row):
-            if abs(value) >= 0.45:
-                fig.add_annotation(
-                    font=dict(size=16, color='black', weight='bold'),
-                )
-
-    # Adicionar bordas às células
-    fig.update_traces(
-        xgap=1,
-        ygap=1,
-        hovertemplate="<b>%{y}</b> vs <b>%{x}</b><br>Correlação: %{z:.2f}<extra></extra>"
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Legenda explicativa
-    st.markdown("""
-    <style>
-        .legenda-box {
-            border-radius: 5px;
-            padding: 15px;
-            margin-top: 20px;
-            border-left: 4px solid #6c757d;
-        }
-        .zoom-info {
-            font-size: 0.9em;
-            color: #6c757d;
-            margin-top: 10px;
-        }
-    </style>
-    <div class="legenda-box">
-        <strong>Interpretação:</strong><br>
-        • Correlação positiva (valores próximos de +1): ambas as variáveis aumentam juntas<br>
-        • Correlação negativa (valores próximos de -1): uma variável aumenta enquanto a outra diminui<br>
-        • Valores em <strong>negrito</strong> indicam correlações moderadas/fortes (|r| ≥ 0.45)
-    </div>
-    <div class="zoom-info">
-        <i class="fas fa-mouse-pointer"></i> Dica: Use o zoom (scroll do mouse) e arraste para navegar na matriz
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # --- NOVA SEÇÃO: Análise Individual por Poluente ---
-    st.header("🔍 Análise Individual por Poluente")
-
-    # Dicionário de poluentes básicos disponíveis
-    poluentes_basicos = {
-        'pm2_5': 'PM2.5', 
-        'pm10': 'PM10',
-        'co': 'CO',
-        'no': 'NO',
-        'no2': 'NO₂',
-        'nox': 'NOx',
-        'so2': 'SO₂',
-        'o3': 'Ozônio',
-        'chuva': 'Chuva',
-        'temp': 'Temperatura',
-        'ur': 'Umidade Relativa'
-    }
-
-    # Widget de seleção individual
-    poluente_selecionado = st.selectbox(
-        'Selecione um poluente para análise detalhada:',
-        options=list(poluentes_basicos.keys()),
-        format_func=lambda x: poluentes_basicos[x],
-        index=1
-    )
-
-    # Verificação para PM2.5
-    if poluente_selecionado == 'pm2_5' and df_merged['pm2_5'].isnull().any():
-        st.warning("⚠️ O poluente PM2.5 contém valores vazios e não pode ser plotado.")
+    if not options:
+        default = []
     else:
-        # Criação do gráfico de dispersão
-        plt.figure(figsize=(12, 7))
-        
-        # Scatter plot
-        plt.scatter(
-            x=df_merged[poluente_selecionado],
-            y=df_merged['num_internacoes'],
-            color='#1f77b4',  # Azul padrão do matplotlib
-            s=60,
-            alpha=0.7,
-            edgecolor='white',
-            linewidth=0.8,
-            label='Dados Observados'
+        if current is None or set(map(str, current)) == set(options):
+            default = [token]
+        else:
+            default = [s for s in map(str, current) if s in mult_opts]
+
+    sel = st.multiselect(label, mult_opts, default=default, key=key)
+    return options if (not sel or token in sel) else [s for s in sel if s != token]
+
+def _ensure_datetime_col(df: pd.DataFrame):
+    """Retorna nome da coluna de data existente e convertida para datetime ('DT_INTER' ou 'data_formatada')."""
+    if "DT_INTER" in df.columns:
+        if not pd.api.types.is_datetime64_any_dtype(df["DT_INTER"]):
+            df["DT_INTER"] = pd.to_datetime(df["DT_INTER"], format="%Y%m%d", errors="coerce")
+        return "DT_INTER"
+    elif "data_formatada" in df.columns:
+        if not pd.api.types.is_datetime64_any_dtype(df["data_formatada"]):
+            df["data_formatada"] = pd.to_datetime(df["data_formatada"], errors="coerce")
+        return "data_formatada"
+    else:
+        return None
+
+def _ensure_cid3(df: pd.DataFrame):
+    """Gera coluna CID_CAT3 (3 dígitos da DIAG_PRINC) se não existir."""
+    if "CID_CAT3" not in df.columns and "DIAG_PRINC" in df.columns:
+        df["CID_CAT3"] = df["DIAG_PRINC"].astype(str).str[:3]
+    return "CID_CAT3" if "CID_CAT3" in df.columns else None
+
+def _crosscorr_table(x: pd.Series, y: pd.Series, max_lag: int = 60) -> pd.DataFrame:
+    """
+    Retorna DataFrame com correlação de Pearson para lags de -max_lag a +max_lag.
+    Definição: corr(lag) = corr( x , y.shift(lag) ).
+      • lag > 0  → o poluente "antecede" internações (efeito antecedente)
+      • lag < 0  → o poluente "segue" internações
+    """
+    x = x.copy().astype(float)
+    y = y.copy().astype(float)
+    out = []
+    for lag in range(-max_lag, max_lag + 1):
+        r = x.corr(y.shift(lag))
+        out.append((lag, r))
+    dfcc = pd.DataFrame(out, columns=["lag", "corr"]).dropna()
+    return dfcc
+
+def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
+    st.title("📈 Poluentes x Doenças Respiratórias — Rio de Janeiro")
+
+    with st.expander("ℹ️ Sobre esta página", expanded=False):
+        st.markdown(
+            """
+            Esta página cruza **internações por doenças respiratórias** (SUS) com as **variáveis ambientais** (QualiAR) do Rio:
+
+            1. Você escolhe os **filtros** (período, idade, CID-10 em 3 dígitos, município).  
+            2. Agregamos as **internações por dia**.  
+            3. Unimos com a série diária ambiental (`data_dia`).  
+            4. Exploramos correlações em duas frentes:
+               - **Sessão 1:** a série de internações com ela mesma (persistência), via **PACF** e **médias móveis** (janelas deslizantes).  
+               - **Sessão 2:** internações x **variáveis ambientais** (séries e correlações de referência).
+            """
         )
-        
-        # Linha de tendência (regressão linear)
-        from sklearn.linear_model import LinearRegression
-        X = df_merged[[poluente_selecionado]].dropna()
-        y = df_merged.loc[X.index, 'num_internacoes']
-        
-        if not X.empty:
-            reg = LinearRegression().fit(X, y)
-            y_pred = reg.predict(X)
-            
-            plt.plot(X, y_pred, 
-                    color='#d62728',  # Vermelho padrão
-                    linewidth=2.5, 
-                    linestyle='--',
-                    label=f'Linha de Tendência (R²={reg.score(X,y):.2f})')
-            
-            # Intervalo de confiança
-            sns.regplot(x=X[poluente_selecionado], y=y,
-                        scatter=False, ci=95,
-                        line_kws={'color':'#d62728', 'alpha':0.2})
-            
-            # Estatísticas
-            correlacao = X[poluente_selecionado].corr(y)
-            stats_text = f'''
-            Estatísticas:
-            Correlação: {correlacao:.2f}
-            Equação: y = {reg.coef_[0]:.2f}x + {reg.intercept_:.2f}
-            '''
-            plt.gcf().text(0.15, 0.82, stats_text,
-                        bbox=dict(facecolor='white', alpha=0.8, 
-                                    edgecolor='lightgray'),
-                        fontsize=10)
-        
-        # Formatação
-        plt.xlabel(f'Concentração de {poluentes_basicos[poluente_selecionado]}', 
-                fontsize=12, fontweight='bold')
-        plt.ylabel('Número de Internações', fontsize=12, fontweight='bold')
-        plt.title(f'Relação entre {poluentes_basicos[poluente_selecionado]} e Internações',
-                fontsize=14, pad=15, fontweight='bold')
-        
-        plt.grid(True, linestyle=':', alpha=0.4)
-        plt.legend(loc='upper right', framealpha=1)
-        plt.tight_layout()
-        
-    st.pyplot(plt)
-    
-    # --- NOVA SEÇÃO: Gráficos Individuais com Plotly ---
-    st.header("📊 Análise Temporal por Poluente (Interativa)")
 
-    # Dicionário de poluentes disponíveis
-    poluentes_disponiveis = {
-        'pm2_5_scaled': 'PM2.5 (Escalado)',
-        'pm10_scaled': 'PM10 (Escalado)',
-        'nox_scaled': 'NOx (Escalado)',
-        'temp_scaled': 'Temperatura (Escalado)',
-        'o3_scaled': 'Ozônio (Escalado)'
+    df_sus = df_sus.copy()
+    df_env = df_rio_treated.copy()
+
+    date_col = _ensure_datetime_col(df_sus)  # 'DT_INTER' ou 'data_formatada'
+    if "data_dia" in df_env.columns and not pd.api.types.is_datetime64_any_dtype(df_env["data_dia"]):
+        df_env["data_dia"] = pd.to_datetime(df_env["data_dia"], errors="coerce")
+    if "IDADE" in df_sus.columns:
+        df_sus["IDADE"] = pd.to_numeric(df_sus["IDADE"], errors="coerce")
+    cid_col = _ensure_cid3(df_sus)  
+
+    if date_col and df_sus[date_col].notna().any():
+        min_d = df_sus[date_col].min().date()
+        max_d = df_sus[date_col].max().date()
+    else:
+        min_d = max_d = None
+
+    if "IDADE" in df_sus.columns:
+        age_min = int(np.nanmin(df_sus["IDADE"])) if df_sus["IDADE"].notna().any() else 0
+        age_max = int(np.nanmax(df_sus["IDADE"])) if df_sus["IDADE"].notna().any() else 100
+    else:
+        age_min, age_max = 0, 100
+
+    cid_opts = df_sus[cid_col].dropna().astype(str).unique().tolist() if cid_col else []
+
+    munic_opts = df_sus["MUNIC_RES"].dropna().astype(str).unique().tolist() if "MUNIC_RES" in df_sus.columns else []
+
+    if "pxd_filters" not in st.session_state:
+        st.session_state["pxd_filters"] = {
+            "d_ini": min_d, "d_fim": max_d,
+            "idade_min": age_min, "idade_max": age_max,
+            "cids": list(map(str, cid_opts)),
+            "munics": list(map(str, munic_opts)),
+        }
+    applied = st.session_state["pxd_filters"]
+
+    # -------------------------
+    # Formulário de filtros 
+    # -------------------------
+    st.header("🔎 Filtros de internações (SUS)")
+    with st.form("form_poluentes_doencas"):
+        c1, c2 = st.columns(2)
+        with c1:
+            if min_d and max_d:
+                d_ini = applied.get("d_ini") or min_d
+                d_fim = applied.get("d_fim") or max_d
+                d_ini_sel, d_fim_sel = st.date_input(
+                    "Período de internação",
+                    value=(d_ini, d_fim),
+                    min_value=min_d, max_value=max_d,
+                    key="pxd_periodo",
+                )
+            else:
+                d_ini_sel, d_fim_sel = None, None
+
+            if "IDADE" in df_sus.columns:
+                idade_min_sel, idade_max_sel = st.slider(
+                    "Faixa etária (anos)",
+                    min_value=int(age_min), max_value=int(age_max),
+                    value=(int(applied.get("idade_min", age_min)), int(applied.get("idade_max", age_max))),
+                    step=1, key="pxd_idade"
+                )
+            else:
+                idade_min_sel, idade_max_sel = None, None
+
+        with c2:
+            sel_cid = _ms_todos(
+                "CID-10 (3 dígitos)",
+                cid_opts,
+                current=applied.get("cids", cid_opts),
+                key="pxd_cid3"
+            )
+            sel_munic = _ms_todos(
+                "Município de residência",
+                munic_opts,
+                current=applied.get("munics", munic_opts),
+                key="pxd_munic"
+            )
+
+        st.form_submit_button("Filtrar")
+
+    st.session_state["pxd_filters"] = {
+        "d_ini": d_ini_sel, "d_fim": d_fim_sel,
+        "idade_min": idade_min_sel, "idade_max": idade_max_sel,
+        "cids": sel_cid, "munics": sel_munic,
     }
+    applied = st.session_state["pxd_filters"]
 
-    # Widget de seleção
-    poluentes_selecionados = st.multiselect(
-        'Selecione um ou mais poluentes para análise:',
-        options=list(poluentes_disponiveis.keys()),
-        format_func=lambda x: poluentes_disponiveis[x],
-        default=['temp_scaled', 'nox_scaled']
+    # -------------------------
+    # Aplicação dos filtros ao df_sus
+    # -------------------------
+    if date_col is None:
+        st.error("Não encontrei a coluna de data de internação ('DT_INTER' ou 'data_formatada') no df_sus.")
+        return
+
+    mask = pd.Series(True, index=df_sus.index)
+
+    if applied.get("d_ini") and applied.get("d_fim"):
+        mask &= df_sus[date_col].dt.date.between(applied["d_ini"], applied["d_fim"])
+
+    if "IDADE" in df_sus.columns and applied.get("idade_min") is not None and applied.get("idade_max") is not None:
+        mask &= df_sus["IDADE"].between(applied["idade_min"], applied["idade_max"])
+
+    if cid_col and applied.get("cids"):
+        mask &= df_sus[cid_col].astype(str).isin(applied["cids"])
+
+    if "MUNIC_RES" in df_sus.columns and applied.get("munics"):
+        mask &= df_sus["MUNIC_RES"].astype(str).isin(applied["munics"])
+
+    df_sus_filtrado = df_sus[mask].copy()
+    st.caption(f"Após filtros: **{len(df_sus_filtrado):,}** registros SUS.".replace(",", "."))
+
+    # -------------------------
+    # Internações por dia e merge com o ambiental
+    # -------------------------
+    if df_sus_filtrado.empty:
+        st.info("Nenhum registro após os filtros. Ajuste os critérios e tente novamente.")
+        return
+
+    df_sus_filtrado["data_dia"] = df_sus_filtrado[date_col].dt.normalize()
+    internacoes_dia = (df_sus_filtrado.groupby("data_dia").size()
+                       .reset_index(name="internacoes"))
+
+    if "data_dia" not in df_env.columns:
+        st.error("df_rio_treated não possui a coluna 'data_dia'. Verifique o carregamento.")
+        return
+
+    df_merged = pd.merge(internacoes_dia, df_env, on="data_dia", how="inner").sort_values("data_dia")
+
+    # -------------------------
+    # Prévia
+    # -------------------------
+    st.subheader("🧾 Prévia do dataset unido (internações x ambiente)")
+    st.dataframe(df_merged.head(), use_container_width=True)
+
+    # =========================================================
+    # SESSÃO 1 — Autocorrelação & Persistência das internações
+    # =========================================================
+    st.header("🔁 Sessão 1 — Autocorrelação & persistência das internações")
+
+    ts_int = internacoes_dia.sort_values("data_dia").reset_index(drop=True)
+    s = ts_int["internacoes"].astype(float)
+    n_obs = int(s.notna().sum())
+    max_lags = int(min(30, max(1, n_obs - 1)))
+
+    st.subheader("📐 PACF — Autocorrelação Parcial (até 30 lags)")
+    if n_obs >= 10 and max_lags >= 1:
+        pacf_arr = pacf_vals_fn(s.values, nlags=max_lags, method="ywm")
+        x_lags = np.arange(1, max_lags + 1)
+        y_vals = pacf_arr[1:] 
+
+        bound = 1.96 / np.sqrt(n_obs)  
+
+        fig_pacf = go.Figure()
+        fig_pacf.add_hrect(y0=-bound, y1=bound, line_width=0, fillcolor="#95a5a6", opacity=0.2, layer="below")
+        fig_pacf.add_hline(y=0, line_color="#7f8c8d", line_width=1)
+        fig_pacf.add_trace(go.Bar(
+            x=x_lags, y=y_vals,
+            marker=dict(color=y_vals, colorscale="RdBu", cmin=-1, cmax=1),
+            text=[f"{v:.2f}" for v in y_vals],
+            textposition="outside",
+            name="PACF",
+        ))
+        fig_pacf.update_layout(
+            title=f"PACF — Internações (n={n_obs}, lags=1..{max_lags})",
+            xaxis_title="Lag",
+            yaxis_title="PACF",
+            margin=dict(l=20, r=20, t=50, b=20),
+            showlegend=False,
+            yaxis=dict(range=[-1.15, 1.15]),
+        )
+        st.plotly_chart(fig_pacf, use_container_width=True)
+
+        top_lags = (pd.Series(y_vals, index=x_lags).abs().sort_values(ascending=False).head(3))
+        st.caption("Maiores |PACF|: " + ", ".join([f"lag {int(i)} ({v:.2f})" for i, v in top_lags.items()]))
+    else:
+        st.info("Série insuficiente para PACF (mín. ~10 observações).")
+
+    st.markdown(
+        "> A série de internações tem **alta persistência** e **padrão semanal**; a **média móvel** resume o comportamento recente "
+        "sem usar informação do futuro (**sem vazamento**). Isso ajuda a identificar **qual janela** (3, 7, 14… dias) melhor resume "
+        "a dinâmica para **prever** D+1 e D+7, servindo de baseline e guiando a **engenharia de atributos**."
     )
 
-    if poluentes_selecionados:
-        # Configurações de estilo
-        cores_poluentes = {
-            'pm2_5_scaled': '#90D1CA',
-            'pm10_scaled': '#129990',
-            'nox_scaled': '#096B68',
-            'temp_scaled': '#604652',
-            'o3_scaled': '#3E3B3C'
-        }
-        
-        marcadores = {
-            'pm2_5_scaled': 'circle',
-            'pm10_scaled': 'square',
-            'nox_scaled': 'diamond',
-            'temp_scaled': 'triangle-up',
-            'o3_scaled': 'pentagon'
-        }
-        
-        # Criar um gráfico para cada poluente selecionado
-        for poluente in poluentes_selecionados:
-            nome_amigavel = poluentes_disponiveis[poluente]
-            
-            # Criar figura com eixo secundário
-            fig = make_subplots(specs=[[{"secondary_y": True}]])
-            
-            # Adicionar poluente (eixo primário)
-            fig.add_trace(
-                go.Scatter(
-                    x=df_merged['mes_ano'],
-                    y=df_merged[poluente],
-                    name=nome_amigavel,
-                    line=dict(color=cores_poluentes[poluente], width=2),
-                    marker=dict(
-                        symbol=marcadores[poluente],
-                        size=8
-                    ),
-                    mode='lines+markers',
-                    hovertemplate=f"{nome_amigavel}: %{{y:.2f}}<extra></extra>"
-                ),
-                secondary_y=False
-            )
-            
-            # Adicionar linha de média do poluente
-            media_poluente = df_merged[poluente].mean()
-            fig.add_hline(
-                y=media_poluente,
-                line_dash="dot",
-                line_color=cores_poluentes[poluente],
-                opacity=0.4,
-                annotation_text=f"Média {nome_amigavel.split(' ')[0]}: {media_poluente:.2f}",
-                annotation_position="bottom right"
-            )
-            
-            # Adicionar internações (eixo secundário)
-            fig.add_trace(
-                go.Scatter(
-                    x=df_merged['mes_ano'],
-                    y=df_merged['num_internacoes'],
-                    name='Internações Respiratórias',
-                    line=dict(color='#FF0000', width=3),
-                    marker=dict(
-                        symbol='star',
-                        size=10
-                    ),
-                    mode='lines+markers',
-                    hovertemplate="Internações: %{y}<extra></extra>"
-                ),
+    st.subheader("🧪 Médias móveis como preditoras (D+1 e D+7)")
+    cols_mm = st.columns([1, 1])
+    with cols_mm[0]:
+        corr_method_mm = st.selectbox("Correlação (MM x futuro)", options=["spearman", "pearson"], index=0, key="pxd_mm_corrm_live")
+    with cols_mm[1]:
+        show_annot_mm = st.checkbox("Mostrar rótulos", value=True, key="pxd_mm_ann_live")
+
+    base = ts_int.copy()
+    base["y_d1"] = base["internacoes"].shift(-1)
+    base["y_d7"] = base["internacoes"].shift(-7)
+    ks = list(range(1, 31))
+    for k in ks:
+        base[f"mm{k}"] = base["internacoes"].rolling(k, min_periods=1).mean()
+
+    res = {}
+    for target in ["y_d1", "y_d7"]:
+        vals = []
+        for k in ks:
+            col = f"mm{k}"
+            dfv = base[[col, target]].dropna()
+            if len(dfv) >= 5:
+                if corr_method_mm == "spearman":
+                    r = dfv[col].rank().corr(dfv[target].rank())
+                else:
+                    r = dfv[col].corr(dfv[target])
+            else:
+                r = np.nan
+            vals.append(r)
+        res[target] = pd.Series(vals, index=ks)
+
+    for target in ["y_d1", "y_d7"]:
+        series = res[target].dropna()
+        if series.empty:
+            st.info(f"Dados insuficientes para correlação ({'D+1' if target=='y_d1' else 'D+7'}).")
+            continue
+        x = [str(k) for k in series.index]
+        y = series.values
+        figb = go.Figure(go.Bar(
+            x=x, y=y,
+            marker=dict(color=y, colorscale="RdBu", cmin=-1, cmax=1, showscale=True),
+            text=[f"{v:.2f}" for v in y] if show_annot_mm else None,
+            textposition="outside" if show_annot_mm else "none"
+        ))
+        ttl = "D+1" if target == "y_d1" else "D+7"
+        figb.add_hline(y=0, line_dash="dash", line_color="#7f8c8d")
+        figb.update_layout(
+            title=f"Correlação ({corr_method_mm}) — MM(k=1..30) vs Internações {ttl}",
+            xaxis_title="Janela k (dias)",
+            yaxis_title="Correlação",
+            margin=dict(l=20, r=20, t=50, b=20)
+        )
+        st.plotly_chart(figb, use_container_width=True)
+
+    st.subheader("📈 Correlação rolante — MM(k) x Internações futuras")
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        k_sel = st.selectbox("Janela MM(k)", options=[3, 7, 14, 21, 30], index=2, key="pxd_mm_k_live")
+    with c2:
+        h_sel = st.selectbox("Horizonte (dias à frente)", options=[1, 7], index=0, key="pxd_mm_h_live")
+    with c3:
+        win = st.slider("Janela rolante (dias)", min_value=30, max_value=180, value=90, step=10, key="pxd_mm_win_live")
+    with c4:
+        roll_method = st.selectbox("Correlação rolante", options=["spearman", "pearson"], index=0, key="pxd_mm_roll_live")
+
+    base = ts_int.copy()
+    base["mm"] = base["internacoes"].rolling(k_sel, min_periods=1).mean()
+    base["y_future"] = base["internacoes"].shift(-h_sel)
+    dfv = base[["data_dia", "mm", "y_future"]].dropna().set_index("data_dia").sort_index()
+
+    if not dfv.empty:
+        if roll_method == "spearman":
+            def _roll_spearman(a: pd.Series, b: pd.Series, w: int) -> pd.Series:
+                out = []
+                idx = a.index
+                av = a.values; bv = b.values
+                for i in range(len(a)):
+                    i0 = max(0, i - w + 1)
+                    aa = av[i0:i+1]; bb = bv[i0:i+1]
+                    if len(aa) >= max(10, w//2):
+                        ra = pd.Series(aa).rank().values
+                        rb = pd.Series(bb).rank().values
+                        out.append(pd.Series(ra).corr(pd.Series(rb)))
+                    else:
+                        out.append(np.nan)
+                return pd.Series(out, index=idx)
+            roll = _roll_spearman(dfv["mm"], dfv["y_future"], win)
+        else:
+            roll = dfv["mm"].rolling(window=win, min_periods=max(10, win // 2)).corr(dfv["y_future"])
+
+        figr = go.Figure()
+        figr.add_trace(go.Scatter(x=roll.index, y=roll.values, mode="lines", name="corr rolante"))
+        figr.add_hline(y=0, line_dash="dash", line_color="#7f8c8d")
+        figr.update_layout(
+            title=f"Correlação rolante ({roll_method}) — MM({k_sel}) x D+{h_sel} (janela={win}d)",
+            xaxis_title="Data",
+            yaxis_title="Correlação",
+            margin=dict(l=20, r=20, t=50, b=20)
+        )
+        st.plotly_chart(figr, use_container_width=True)
+    else:
+        st.info("Série insuficiente para correlação rolante.")
+
+    # =========================================================
+    # SESSÃO 2 — Internações x Variáveis ambientais
+    # =========================================================
+    st.header("🌫️ Sessão 2 — Internações x variáveis ambientais")
+
+    st.subheader("🧭 Série temporal: Internações x variáveis ambientais (MM30)")
+    non_features = {"data_dia", "internacoes", "ano", "mes", "dia", "Qualidade_do_Ar"}
+    env_cols = [c for c in df_merged.columns
+                if c not in non_features and pd.api.types.is_numeric_dtype(df_merged[c])]
+
+    default_vars = [v for v in ["temp", "no2", "o3"] if v in env_cols]
+    c1, c2 = st.columns([1.5, 1])
+    with c1:
+        vars_sel = st.multiselect(
+            "Variáveis ambientais (eixo direito)",
+            options=env_cols,
+            default=(default_vars if default_vars else env_cols[:2]),
+            key="pxd_ts_vars"
+        )
+    with c2:
+        use_z = st.checkbox("Normalizar (z-score) no eixo direito", value=True, key="pxd_ts_norm")
+
+    df_plot = df_merged[["data_dia", "internacoes"] + (vars_sel if vars_sel else [])] \
+        .dropna(subset=["data_dia"]).sort_values("data_dia")
+
+    if vars_sel and not df_plot.empty:
+        # MM30
+        df_mm = df_plot.set_index("data_dia")
+        cols_right = vars_sel.copy()
+        cols_all = ["internacoes"] + cols_right
+        for c in cols_all:
+            if c in df_mm.columns:
+                df_mm[f"{c}_mm30"] = df_mm[c].rolling("30D", min_periods=1).mean()
+        df_mm = df_mm.reset_index()
+
+        df_plot_norm = df_mm.copy()
+        if use_z:
+            for v in cols_right:
+                col = f"{v}_mm30"
+                mu = df_plot_norm[col].mean()
+                sd = df_plot_norm[col].std(ddof=0)
+                df_plot_norm[col] = (df_plot_norm[col] - mu) / (sd if sd not in (0, np.nan) else 1.0)
+
+        fig_ts = make_subplots(specs=[[{"secondary_y": True}]])
+        fig_ts.add_trace(
+            go.Scatter(x=df_plot_norm["data_dia"], y=df_plot_norm["internacoes_mm30"],
+                       mode="lines", name="Internações (MM30)", line=dict(width=2, color="#2c3e50")),
+            secondary_y=False
+        )
+        for v in cols_right:
+            fig_ts.add_trace(
+                go.Scatter(x=df_plot_norm["data_dia"], y=df_plot_norm[f"{v}_mm30"],
+                           mode="lines", name=f"{v} (MM30)"),
                 secondary_y=True
             )
-            
-            # Configurações do layout
-            fig.update_layout(
-                title=f'Relação entre {nome_amigavel} e Internações Respiratórias',
-                xaxis_title='Mês/Ano',
-                yaxis_title=f'Concentração ({nome_amigavel})',
-                yaxis2_title='Número de Internações',
-                hovermode="x unified",
-                height=500,
-                legend=dict(
-                    orientation="h",
-                    yanchor="bottom",
-                    y=1.02,
-                    xanchor="right",
-                    x=1
-                ),
-                margin=dict(l=50, r=50, t=80, b=50)
-            )
-            
-            # Configurações dos eixos
-            fig.update_yaxes(
-                title_text=f'Concentração ({nome_amigavel})',
-                secondary_y=False,
-                showgrid=True,
-                gridcolor='lightgray',
-                gridwidth=0.5
-            )
-            
-            fig.update_yaxes(
-                title_text='Número de Internações',
-                secondary_y=True,
-                showgrid=False
-            )
-            
-            # Adicionar zoom e scroll
-            fig.update_xaxes(
-                rangeslider_visible=True,
-                tickangle=45
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Adicionar espaço entre gráficos
-            st.markdown("---")
-        
-        # Explicação dos símbolos
-        st.markdown("""
-        <div class="legenda-box">
-            <strong>Legenda dos Marcadores:</strong><br>
-            • <i class="fas fa-circle" style="color:#90D1CA"></i> PM2.5<br>
-            • <i class="fas fa-square" style="color:#129990"></i> PM10<br>
-            • <i class="fas fa-gem" style="color:#096B68"></i> NOx<br>
-            • <i class="fas fa-caret-up" style="color:#604652"></i> Temperatura<br>
-            • <i class="fas fa-star" style="color:#3E3B3C"></i> Ozônio<br>
-            • <i class="fas fa-star" style="color:#FF0000"></i> Internações
-        </div>
-        """, unsafe_allow_html=True)
-      
-        # # --- NOVA SEÇÃO: Gráfico Consolidado ---
-        # st.header("📊 Visão Consolidada dos Poluentes Selecionados")
-        
-        # # Configurações do gráfico consolidado
-        # # Filtro por período
-        # anos = sorted(df_merged['ano'].unique())
-        # periodo = st.select_slider(
-        #     "Selecione o período:",
-        #     options=anos,
-        #     value=(min(anos), max(anos)))
-
-        # # Filtrar dados
-        # df_filtrado = df_merged[df_merged['ano'].between(periodo[0], periodo[1])]
-        
-        
-        # plt.figure(figsize=(20, 6))
-        # ax1 = plt.gca()
-        
-        # # Mapeamento de cores e estilos para o gráfico consolidado
-        # cores_consolidado = {
-        #     'pm2_5_scaled': '#90D1CA',
-        #     'pm10_scaled': '#27548A',
-        #     'nox_scaled': '#FEBA17',
-        #     'temp_scaled': '#604652',
-        #     'o3_scaled': '#3E3B3C'
-        # }
-        
-        # estilos_consolidado = ['-', '--', ':', '-.', '--']
-        # marcadores_consolidado = ['o', 's', 'D', '^', 'p']
-        
-        # # Plotar cada poluente selecionado
-        # for i, poluente in enumerate(poluentes_selecionados):
-        #     ax1.plot(df_filtrado['mes_ano'], df_filtrado[poluente],
-        #                 label=poluentes_disponiveis[poluente],
-        #                 color=cores_consolidado[poluente],
-        #                 linestyle=estilos_consolidado[i % len(estilos_consolidado)],
-        #                 marker=marcadores_consolidado[i % len(marcadores_consolidado)],
-        #                 linewidth=2.5,
-        #                 markersize=8,
-        #                 alpha=0.9)
-        
-        # # Configurar eixos (igual ao código original)
-        # ax1.set_ylabel('Concentração de Poluentes (Scaled)', fontsize=13, fontweight='bold', color='#2E8B57')
-        # ax1.tick_params(axis='y', colors='#2E8B57', labelsize=11)
-        # ax1.grid(True, linestyle=':', alpha=0.4)
-        
-        # ax2 = ax1.twinx()
-        # ax2.plot(df_filtrado['mes_ano'], df_filtrado['num_internacoes'],
-        #             label='Internações Respiratórias',
-        #             color='#FF0000',
-        #             linestyle='-',
-        #             marker='*',
-        #             linewidth=3,
-        #             markersize=10,
-        #             alpha=1)
-        
-        # ax2.set_ylabel('Número de Internações', color='#FF0000', fontsize=13, fontweight='bold')
-        # ax2.tick_params(axis='y', labelcolor='#FF0000', labelsize=11)
-        
-        # # Melhorias no eixo X
-        # plt.xticks(rotation=45, ha='right', fontsize=11)
-        # ax1.xaxis.set_major_locator(plt.MaxNLocator(15))
-        
-        # # Linhas de média
-        # for poluente in poluentes_selecionados:
-        #     ax1.axhline(y=df_filtrado[poluente].mean(), 
-        #                 color=cores_consolidado[poluente], 
-        #                 linestyle='--', 
-        #                 alpha=0.4,
-        #                 linewidth=1.5)
-        
-        # # Título e legenda
-        # plt.title('Relação entre Poluentes Atmosféricos e Internações Respiratórias\n', 
-        #             fontsize=16, fontweight='bold', pad=20)
-        
-        # lines1, labels1 = ax1.get_legend_handles_labels()
-        # lines2, labels2 = ax2.get_legend_handles_labels()
-        # ax1.legend(lines1 + lines2, labels1 + labels2,
-        #             loc='upper center',
-        #             bbox_to_anchor=(0.5, -0.15),
-        #             ncol=3,
-        #             fontsize=12,
-        #             framealpha=1)
-        
-        # plt.tight_layout()
-        # plt.subplots_adjust(bottom=0.2)
-        # st.pyplot(plt)
-        
-        # # Adicionando explicação
-        # st.markdown("""
-        # <div class="legenda-box">
-        #     <strong>Interpretação dos Gráficos:</strong><br>
-        #     • <span style="color:#FF0000">Linha vermelha</span> mostra o número de internações respiratórias<br>
-        #     • Linhas coloridas mostram a concentração dos poluentes selecionados<br>
-        #     • Linhas tracejadas mostram a média histórica de cada poluente
-        # </div>
-        # """, unsafe_allow_html=True)
-        
-        # --- NOVA SEÇÃO: Gráfico Consolidado Interativo ---
-        st.header("📊 Visão Consolidada Interativa")
-
-        # Criar figura com eixo secundário
-        fig = make_subplots(specs=[[{"secondary_y": True}]])
-
-        # Adicionar cada poluente
-        cores_plotly = {
-                'pm2_5_scaled': '#90D1CA',
-                'pm10_scaled': '#27548A',
-                'nox_scaled': '#FEBA17',
-                'temp_scaled': '#604652',
-                'o3_scaled': '#3E3B3C'
-        }
-
-        for poluente in poluentes_selecionados:
-                fig.add_trace(
-                        go.Scatter(
-                                x=df_merged['mes_ano'],
-                                y=df_merged[poluente],
-                                name=poluentes_disponiveis[poluente],
-                                line=dict(color=cores_plotly[poluente], width=2),
-                                mode='lines+markers',
-                                marker=dict(size=6)
-                        ),
-                        secondary_y=False
-                )
-                
-                # Linha de média
-                fig.add_hline(
-                        y=df_merged[poluente].mean(),
-                        line_dash="dot",
-                        line_color=cores_plotly[poluente],
-                        opacity=0.5,
-                        annotation_text=f"Média {poluentes_disponiveis[poluente]}",
-                        annotation_position="bottom right"
-                )
-
-        # Adicionar internações (eixo secundário)
-        fig.add_trace(
-                go.Scatter(
-                        x=df_merged['mes_ano'],
-                        y=df_merged['num_internacoes'],
-                        name='Internações',
-                        line=dict(color='#FF0000', width=3),
-                        mode='lines+markers',
-                        marker=dict(size=8, symbol='star')
-                ),
-                secondary_y=True
+        fig_ts.update_layout(
+            title=f"Internações (MM30) x {'; '.join(vars_sel)} (MM30)",
+            margin=dict(l=20, r=20, t=40, b=20),
+            legend_title_text="Séries"
         )
-
-        # Layout do gráfico
-        fig.update_layout(
-                title='Relação entre Poluentes e Internações Respiratórias',
-                xaxis_title='Mês/Ano',
-                yaxis_title='Concentração de Poluentes',
-                yaxis2_title='Número de Internações',
-                hovermode="x unified",
-                height=500,
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                margin=dict(l=100, r=100, t=100, b=200)  # Espaço para legendas
-        )
-
-        # Adicionar zoom e scroll nativo
-        fig.update_xaxes(rangeslider_visible=True)
-
-        st.plotly_chart(fig, use_container_width=True)
+        fig_ts.update_xaxes(title_text="Data")
+        fig_ts.update_yaxes(title_text="Internações/dia (MM30)", secondary_y=False)
+        fig_ts.update_yaxes(title_text=("Z-score (MM30)" if use_z else "Valor (MM30)"), secondary_y=True)
+        st.plotly_chart(fig_ts, use_container_width=True)
     else:
-        st.warning("Selecione pelo menos um poluente para visualizar os gráficos.")
+        st.info("Selecione ao menos uma variável ambiental para o eixo direito.")
 
+    st.subheader("📊 Correlação lag 0 — Internações x variáveis ambientais (toda a série)")
+
+    method0 = st.selectbox("Método", options=["spearman", "pearson"], index=0, key="pxd_lag0_m")
+    # alinhamento e limpeza
+    df_valid = df_merged.dropna(subset=["internacoes"]).copy()
+    features = [c for c in df_valid.columns if c not in non_features]
+
+    if features:
+        if method0 == "spearman":
+            Xr = df_valid[features].rank()
+            yr = df_valid["internacoes"].rank()
+            s = Xr.corrwith(yr, method="pearson")
+        else:
+            s = df_valid[features].corrwith(df_valid["internacoes"], method="pearson")
+
+        s = s.dropna().sort_values(key=lambda v: v.abs(), ascending=False)
+
+        if not s.empty:
+            fig_corr = go.Figure(go.Bar(
+                x=s.index.tolist(), y=s.values,
+                marker=dict(color=s.values, colorscale="RdBu", cmin=-1, cmax=1, showscale=True),
+                text=[f"{v:.2f}" for v in s.values],
+                textposition="outside"
+            ))
+            fig_corr.add_hline(y=0, line_dash="dash", line_color="#7f8c8d")
+            fig_corr.update_layout(
+                title=f"Correlação (lag 0, método={method0}) — Internações x variáveis",
+                xaxis_title="Variáveis ambientais",
+                yaxis_title="Correlação",
+                margin=dict(l=20, r=20, t=50, b=20),
+                xaxis_tickangle=-30
+            )
+            st.plotly_chart(fig_corr, use_container_width=True)
+        else:
+            st.info("Sem colunas numéricas válidas para a correlação.")
+    else:
+        st.info("Nenhuma variável ambiental disponível para correlação.")
         
+    # --------------------------------------------
+    # 2.3) Melhor janela + lag por variável (Spearman)
+    # --------------------------------------------
+    st.subheader("🏁 Melhor janela + lag por variável (Spearman)")
+
+    df = df_merged.copy()
+
+    df["internacoes_d1"] = df["internacoes"].shift(-1)
+    df["internacoes_d7"] = df["internacoes"].shift(-7)
+
+    pollutant_candidates = ['co','no','no2','nox','so2','o3','pm10','pm2_5','AQI','temp','chuva','ur']
+
+    cols_lower_map = {c.lower(): c for c in df.columns}
+    pollutants = [(v if v in df.columns else cols_lower_map.get(v.lower())) for v in pollutant_candidates]
+    pollutants = [v for v in dict.fromkeys(pollutants) if v is not None]  
+
+    for c in pollutants + ["internacoes_d1", "internacoes_d7"]:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    janelas = [3, 7, 14, 21, 30, 60, 90, 120, 150]
+    shifts = list(range(0, 16))  # 0..15
+
+    for var in pollutants:
+        if var not in df.columns:
+            continue
+        s = df[var]
+        for w in janelas:
+            df[f"{var}_mm{w}"] = s.rolling(window=w, min_periods=w).mean()
+
+    results = []
+    for tgt in ["internacoes_d1", "internacoes_d7"]:
+        if tgt not in df.columns:
+            continue
+        for var in pollutants:
+            for w in janelas:
+                base_col = f"{var}_mm{w}"
+                if base_col not in df.columns:
+                    continue
+                for k in shifts:
+                    x = df[base_col].shift(k)
+                    y = df[tgt]
+                    sub = pd.concat([x, y], axis=1).dropna()
+                    if len(sub) >= 5:
+                        corr = sub.corr(method="spearman").iloc[0, 1]
+                        results.append({"target": tgt, "variavel": var, "janela": w, "shift": k, "spearman": corr})
+
+    res = pd.DataFrame(results)
+
+    if res.empty:
+        st.info("Sem resultados para as combinações avaliadas (verifique período/variáveis).")
+    else:
+        best_per_var = (
+            res.assign(abs_s=res["spearman"].abs())
+            .sort_values(["target", "variavel", "abs_s"], ascending=[True, True, False])
+            .groupby(["target", "variavel"], as_index=False)
+            .first()
+            .drop(columns="abs_s")
+        )
+
+        for tgt, titulo in [("internacoes_d1", "Internações D+1"), ("internacoes_d7", "Internações D+7")]:
+            df_t = best_per_var[best_per_var["target"] == tgt].copy()
+            if df_t.empty:
+                st.info(f"Sem resultados para {titulo}.")
+                continue
+
+            df_t = df_t.sort_values("spearman", key=lambda s: s.abs(), ascending=False).reset_index(drop=True)
+            df_t["label"] = df_t.apply(lambda r: f"{r['variavel']}<br>MM{int(r['janela'])} | k={int(r['shift'])}", axis=1)
+
+            fig_best = go.Figure(go.Bar(
+                x=df_t["label"],
+                y=df_t["spearman"],
+                marker=dict(color=df_t["spearman"], colorscale="RdBu", cmin=-1, cmax=1, showscale=True),
+                text=[f"{v:.2f}" for v in df_t["spearman"]],
+                textposition="outside"
+            ))
+            fig_best.add_hline(y=0, line_dash="dash", line_color="#7f8c8d")
+            fig_best.update_layout(
+                title=f"Melhor janela + lag por variável — Spearman ({titulo})",
+                xaxis_title="Variável | Melhor (MM, lag)",
+                yaxis_title="Correlação",
+                margin=dict(l=20, r=20, t=50, b=20)
+            )
+            fig_best.update_xaxes(tickangle=-30)
+            st.plotly_chart(fig_best, use_container_width=True)
+
+        with st.expander("📋 Tabela — melhores combinações por variável", expanded=False):
+            tbl = best_per_var.copy()
+            tbl["abs_s"] = pd.to_numeric(tbl["spearman"], errors="coerce").abs()
+            tbl = tbl.sort_values(["target", "abs_s"], ascending=[True, False]).drop(columns="abs_s")
+            st.dataframe(tbl.reset_index(drop=True), use_container_width=True)
     
-    st.write("Gráficos de correlação e análises estatísticas...")
+    # =========================================================
+    # SESSÃO 3 — Curvas de correlação por lag (CCF)
+    # =========================================================
+    st.header("🔀 Sessão 3 — Curvas de correlação por lag (CCF)")
+
+    non_features = {"data_dia", "internacoes", "ano", "mes", "dia", "Qualidade_do_Ar"}
+    env_cols_all = [c for c in df_merged.columns
+                    if c not in non_features and pd.api.types.is_numeric_dtype(df_merged[c])]
+
+    if env_cols_all:
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            vars_ccf = st.multiselect(
+                "Variáveis para analisar (até 5)",
+                options=env_cols_all,
+                default=[v for v in ["no2", "o3", "pm2_5"] if v in env_cols_all][:3],
+                key="pxd_ccf_vars"
+            )
+        with c2:
+            max_lag = st.slider("Lags (±)", min_value=5, max_value=30, value=15, step=1, key="pxd_ccf_lags")
+
+        if vars_ccf:
+            fig_ccf = go.Figure()
+            n_eff = int(df_merged["internacoes"].notna().sum())
+            bound = (1.96 / np.sqrt(n_eff)) if n_eff > 0 else None
+
+            for v in vars_ccf[:5]:
+                x = df_merged[v].astype(float)
+                y = df_merged["internacoes"].astype(float)
+                dfcc = _crosscorr_table(x, y, max_lag=max_lag) 
+                fig_ccf.add_trace(go.Scatter(x=dfcc["lag"], y=dfcc["corr"], mode="lines+markers", name=v))
+
+            fig_ccf.add_vline(x=0, line_dash="dash", line_color="#7f8c8d")
+            if bound is not None and np.isfinite(bound):
+                fig_ccf.add_hrect(y0=-bound, y1=bound, line_width=0, fillcolor="#95a5a6", opacity=0.15, layer="below")
+
+            fig_ccf.update_layout(
+                title="Correlação por lag — positivo: variável antecede internações",
+                xaxis_title="Lag (dias) — corr( X(t), Y(t+lag) )",
+                yaxis_title="Correlação (Pearson)",
+                margin=dict(l=20, r=20, t=50, b=20),
+                legend_title_text="Variável"
+            )
+            st.plotly_chart(fig_ccf, use_container_width=True)
+        else:
+            st.info("Selecione ao menos uma variável para traçar as curvas de correlação por lag.")
+    else:
+        st.info("Não há variáveis numéricas ambientais para esta análise.")
