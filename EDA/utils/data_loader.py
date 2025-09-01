@@ -11,19 +11,29 @@ def load_estacoes_data():
 
 @st.cache_data
 def load_rio_de_janeiro_qualiar_data():
-  url_rio_de_janeiro_qualiar = r'https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/DataRio/QUALIAR_RIO_DE_JANEIRO.csv'
+    url_rio_de_janeiro_qualiar = r'https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/DataRio/QUALIAR_RIO_DE_JANEIRO.csv'
   
-  df_rio_de_janeiro_qualiar = pd.read_csv(url_rio_de_janeiro_qualiar, sep=',')
+    df_rio_de_janeiro_qualiar = pd.read_csv(url_rio_de_janeiro_qualiar, sep=',')
   
-  return df_rio_de_janeiro_qualiar
+    df_rio_de_janeiro_qualiar["data_dia"] = pd.to_datetime(df_rio_de_janeiro_qualiar["data_dia"], format="%Y-%m-%d", errors="coerce")
+    df_rio_de_janeiro_qualiar["ano"] = df_rio_de_janeiro_qualiar["data_dia"].dt.year
+    df_rio_de_janeiro_qualiar["mes"] = df_rio_de_janeiro_qualiar["data_dia"].dt.month
+    df_rio_de_janeiro_qualiar["ano_mes"] = df_rio_de_janeiro_qualiar["data_dia"].dt.to_period("M").astype(str)
+
+    return df_rio_de_janeiro_qualiar
   
 @st.cache_data
 def load_rio_de_janeiro_qualiar_treated_data():
-  url_rio_de_janeiro_qualiar_treated = r'https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/DataRio/QUALIAR_RIO_DE_JANEIRO_TRATADO.csv'
+    url_rio_de_janeiro_qualiar_treated = r'https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/DataRio/QUALIAR_RIO_DE_JANEIRO_TRATADO.csv'
   
-  df_rio_de_janeiro_qualiar_treated = pd.read_csv(url_rio_de_janeiro_qualiar_treated, sep=',')
+    df_rio_de_janeiro_qualiar_treated = pd.read_csv(url_rio_de_janeiro_qualiar_treated, sep=',')
   
-  return df_rio_de_janeiro_qualiar_treated
+    df_rio_de_janeiro_qualiar_treated["data_dia"] = pd.to_datetime(df_rio_de_janeiro_qualiar_treated["data_dia"], format="%Y-%m-%d", errors="coerce")
+    df_rio_de_janeiro_qualiar_treated["ano"] = df_rio_de_janeiro_qualiar_treated["data_dia"].dt.year
+    df_rio_de_janeiro_qualiar_treated["mes"] = df_rio_de_janeiro_qualiar_treated["data_dia"].dt.month
+    df_rio_de_janeiro_qualiar_treated["ano_mes"] = df_rio_de_janeiro_qualiar_treated["data_dia"].dt.to_period("M").astype(str)
+  
+    return df_rio_de_janeiro_qualiar_treated
 
 @st.cache_data(show_spinner=True)
 def load_sus_data() -> pd.DataFrame:
