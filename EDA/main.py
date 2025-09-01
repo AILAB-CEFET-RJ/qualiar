@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-from utils.config import POLUENTES_TRADUCAO, month_names  
 from utils.data_loader import load_sus_data, load_estacoes_data, load_rio_de_janeiro_qualiar_data, load_rio_de_janeiro_qualiar_treated_data
 import pages.poluentes_doencas.Poluentes_Doencas as poluentes_doencas
 import pages.sus.Dados_Saude as dados_saude

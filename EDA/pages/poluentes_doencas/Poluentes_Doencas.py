@@ -79,7 +79,7 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
 
     df_sus = df_sus.copy()
     df_env = df_rio_treated.copy()
-    
+    df_sus['DT_INTER'] = pd.to_datetime(df_sus['DT_INTER'], errors='coerce')
     date_col = _ensure_datetime_col(df_sus)  # 'DT_INTER' ou 'data_formatada'
     if "data_dia" in df_env.columns and not pd.api.types.is_datetime64_any_dtype(df_env["data_dia"]):
         df_env["data_dia"] = pd.to_datetime(df_env["data_dia"], errors="coerce")
