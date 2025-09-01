@@ -44,22 +44,6 @@ def _ensure_cid3(df: pd.DataFrame):
         df["CID_CAT3"] = df["DIAG_PRINC"].astype(str).str[:3]
     return "CID_CAT3" if "CID_CAT3" in df.columns else None
 
-def _crosscorr_table(x: pd.Series, y: pd.Series, max_lag: int = 60) -> pd.DataFrame:
-    """
-    Correlação de Pearson para lags de -max_lag..+max_lag.
-    corr(lag) = corr( x(t), y(t+lag) ).
-      • lag > 0 → X antecede Y
-      • lag < 0 → X sucede Y
-    """
-    x = x.astype(float)
-    y = y.astype(float)
-    out = []
-    for lag in range(-max_lag, max_lag + 1):
-        r = x.corr(y.shift(lag))
-        if pd.notna(r):
-            out.append((lag, r))
-    return pd.DataFrame(out, columns=["lag", "corr"])
-
 # =========================
 # Página
 # =========================
@@ -104,13 +88,6 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     else:
         min_d = max_d = None
 
-    # Opções de filtros
-    if "IDADE" in df_sus.columns and df_sus["IDADE"].notna().any():
-        age_min = int(np.nanmin(df_sus["IDADE"]))
-        age_max = int(np.nanmax(df_sus["IDADE"]))
-    else:
-        age_min, age_max = 0, 100
-
     cid_opts = df_sus[cid_col].dropna().astype(str).unique().tolist() if cid_col else []
     munic_opts = df_sus["MUNIC_RES"].dropna().astype(str).unique().tolist() if "MUNIC_RES" in df_sus.columns else []
 
@@ -118,7 +95,6 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     if "pxd_filters" not in st.session_state:
         st.session_state["pxd_filters"] = {
             "d_ini": min_d, "d_fim": max_d,
-            "idade_min": age_min, "idade_max": age_max,
             "cids": list(map(str, cid_opts)),
             "munics": list(map(str, munic_opts)),
         }
@@ -141,17 +117,6 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
             else:
                 d_ini_sel, d_fim_sel = None, None
 
-            if "IDADE" in df_sus.columns:
-                idade_min_sel, idade_max_sel = st.slider(
-                    "Faixa etária (anos)",
-                    min_value=int(age_min), max_value=int(age_max),
-                    value=(int(applied.get("idade_min", age_min)),
-                           int(applied.get("idade_max", age_max))),
-                    step=1, key="pxd_idade"
-                )
-            else:
-                idade_min_sel, idade_max_sel = None, None
-
         with c2:
             sel_cid = _ms_todos(
                 "CID-10 (3 dígitos)",
@@ -170,7 +135,6 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     # Atualiza estado
     st.session_state["pxd_filters"] = {
         "d_ini": d_ini_sel, "d_fim": d_fim_sel,
-        "idade_min": idade_min_sel, "idade_max": idade_max_sel,
         "cids": sel_cid, "munics": sel_munic,
     }
     applied = st.session_state["pxd_filters"]
@@ -220,9 +184,9 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     ts_int = internacoes_dia.copy()
     s = ts_int["internacoes"].astype(float)
     n_obs = int(s.notna().sum())
-    max_lags = int(min(30, max(1, n_obs - 1)))
+    max_lags = int(min(15, max(1, n_obs - 1)))
 
-    st.subheader("📐 PACF — Autocorrelação Parcial (até 30 lags)")
+    st.subheader("📐 PACF — Autocorrelação Parcial (até 15 lags)")
     if n_obs >= 10 and max_lags >= 1:
         pacf_arr = pacf_vals_fn(s.values, nlags=max_lags, method="ywm")
         x_lags = np.arange(1, max_lags + 1)
@@ -257,14 +221,16 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     st.subheader("🧪 Médias móveis como preditoras (D+1 e D+7)")
     cols_mm = st.columns([1, 1])
     with cols_mm[0]:
-        corr_method_mm = st.selectbox("Correlação (MM x futuro)", options=["spearman", "pearson"], index=0, key="pxd_mm_corrm_live")
+        st.markdown("**Correlação fixa:** Spearman")
     with cols_mm[1]:
         show_annot_mm = st.checkbox("Mostrar rótulos", value=True, key="pxd_mm_ann_live")
 
     base = ts_int.copy()
     base["y_d1"] = base["internacoes"].shift(-1)
     base["y_d7"] = base["internacoes"].shift(-7)
-    ks = list(range(1, 31))
+
+    # Janela máxima = 15
+    ks = list(range(1, 16))
 
     # Sem criar dezenas de colunas no DataFrame (evita fragmentação):
     res = {}
@@ -274,10 +240,8 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
             mmk = base["internacoes"].rolling(k, min_periods=1).mean()  # série temporária
             dfv = pd.concat([mmk, base[target]], axis=1).dropna()
             if len(dfv) >= 5:
-                if corr_method_mm == "spearman":
-                    r = dfv.iloc[:, 0].rank().corr(dfv.iloc[:, 1].rank())
-                else:
-                    r = dfv.iloc[:, 0].corr(dfv.iloc[:, 1])
+                # Spearman sempre
+                r = dfv.iloc[:, 0].rank().corr(dfv.iloc[:, 1].rank())
             else:
                 r = np.nan
             vals.append(r)
@@ -299,62 +263,12 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
         ttl = "D+1" if target == "y_d1" else "D+7"
         figb.add_hline(y=0, line_dash="dash", line_color="#7f8c8d")
         figb.update_layout(
-            title=f"Correlação ({corr_method_mm}) — MM(k=1..30) vs Internações {ttl}",
+            title=f"Correlação (spearman) — MM(k=1..15) vs Internações {ttl}",
             xaxis_title="Janela k (dias)",
             yaxis_title="Correlação",
             margin=dict(l=20, r=20, t=50, b=20)
         )
         st.plotly_chart(figb, use_container_width=True)
-
-    st.subheader("📈 Correlação rolante — MM(k) x Internações futuras")
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        k_sel = st.selectbox("Janela MM(k)", options=[3, 7, 14, 21, 30], index=2, key="pxd_mm_k_live")
-    with c2:
-        h_sel = st.selectbox("Horizonte (dias à frente)", options=[1, 7], index=0, key="pxd_mm_h_live")
-    with c3:
-        win = st.slider("Janela rolante (dias)", min_value=30, max_value=180, value=90, step=10, key="pxd_mm_win_live")
-    with c4:
-        roll_method = st.selectbox("Correlação rolante", options=["spearman", "pearson"], index=0, key="pxd_mm_roll_live")
-
-    base = ts_int.copy()
-    base["mm"] = base["internacoes"].rolling(k_sel, min_periods=1).mean()
-    base["y_future"] = base["internacoes"].shift(-h_sel)
-    dfv = base[["data_dia", "mm", "y_future"]].dropna().set_index("data_dia").sort_index()
-
-    if not dfv.empty:
-        if roll_method == "spearman":
-            # cálculo explícito para não criar colunas auxiliares
-            def _roll_spearman(a: pd.Series, b: pd.Series, w: int) -> pd.Series:
-                out = []
-                idx = a.index
-                av = a.values; bv = b.values
-                for i in range(len(a)):
-                    i0 = max(0, i - w + 1)
-                    aa = av[i0:i+1]; bb = bv[i0:i+1]
-                    if len(aa) >= max(10, w//2):
-                        ra = pd.Series(aa).rank().values
-                        rb = pd.Series(bb).rank().values
-                        out.append(pd.Series(ra).corr(pd.Series(rb)))
-                    else:
-                        out.append(np.nan)
-                return pd.Series(out, index=idx)
-            roll = _roll_spearman(dfv["mm"], dfv["y_future"], win)
-        else:
-            roll = dfv["mm"].rolling(window=win, min_periods=max(10, win // 2)).corr(dfv["y_future"])
-
-        figr = go.Figure()
-        figr.add_trace(go.Scatter(x=roll.index, y=roll.values, mode="lines", name="corr rolante"))
-        figr.add_hline(y=0, line_dash="dash", line_color="#7f8c8d")
-        figr.update_layout(
-            title=f"Correlação rolante ({roll_method}) — MM({k_sel}) x D+{h_sel} (janela={win}d)",
-            xaxis_title="Data",
-            yaxis_title="Correlação",
-            margin=dict(l=20, r=20, t=50, b=20)
-        )
-        st.plotly_chart(figr, use_container_width=True)
-    else:
-        st.info("Série insuficiente para correlação rolante.")
 
     # =========================
     # SESSÃO 2 — Séries e correlação lag 0 (ambiente)
