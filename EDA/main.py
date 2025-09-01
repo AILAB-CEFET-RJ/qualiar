@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
-from utils.config import POLUENTES_TRADUCAO  
-from utils.data_loader import load_sus_data, load_estacoes_data, load_rio_de_janeiro_qualiar_data, load_rio_de_janeiro_qualiar_treated_data
+from utils.config import POLUENTES_TRADUCAO, month_names  
+from utils.data_loader import load_sus_data, prepare_sus_df, load_estacoes_data, load_rio_de_janeiro_qualiar_data, load_rio_de_janeiro_qualiar_treated_data
 import pages.poluentes_doencas.Poluentes_Doencas as poluentes_doencas
 import pages.sus.Dados_Saude as dados_saude
 import pages.estacoes.Analise_Estacoes as analise_estacoes
@@ -15,12 +15,11 @@ pagina_selecionada = st.sidebar.radio(
     ["🌆 Qualidade do ar Rio", "🩺 Dados de Saúde", "🗺️ Estações (EDA)", "📈 Poluentes x Doenças"]
 )
 
-# @st.cache_data(show_spinner=True)
-# def _get_sus_prepared():
-#     df_raw = load_sus_data() 
-#     return df_raw
-
-# df_sus = _get_sus_prepared()
+@st.cache_data(show_spinner=True)
+def _get_sus_prepared():
+    df_raw = load_sus_data()
+    df_prepared = prepare_sus_df(df_raw)
+    return df_prepared
 
 @st.cache_data(show_spinner=True)
 def _get_estacoes_data():
@@ -77,17 +76,20 @@ def _get_rio_prepared_treated():
 
 df_rio_treated = _get_rio_prepared_treated()
 
-# Roteamento para páginas
 if pagina_selecionada == "🌆 Qualidade do ar Rio":
     analise_rio.show(df_rio)
 
 elif pagina_selecionada == "🩺 Dados de Saúde":
-    pass
-    # dados_saude.show(df_sus)
+    # Carrega ON-DEMAND
+    with st.spinner("Carregando dados do SUS..."):
+        df_sus = _get_sus_prepared()
+    dados_saude.show(df_sus)
 
 elif pagina_selecionada == "🗺️ Estações (EDA)":
     analise_estacoes.show(df_estacoes)
 
 elif pagina_selecionada == "📈 Poluentes x Doenças":
-    pass
-    # poluentes_doencas.show(df_sus, df_rio_treated)
+    # Se essa página também usa SUS, carregue aqui on-demand:
+    with st.spinner("Carregando dados (SUS + Rio)..."):
+        df_sus = _get_sus_prepared()
+    poluentes_doencas.show(df_sus, df_rio_treated)
