@@ -1,3 +1,4 @@
+# pages/poluentes_doencas/Poluentes_Doencas.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -5,11 +6,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from statsmodels.tsa.stattools import pacf as pacf_vals_fn
 
-# -------------------------
+# =========================
 # Helpers
-# -------------------------
+# =========================
 def _ms_todos(label: str, options, current=None, key: str = None):
-    """Multiselect com 'Todos'. Retorna lista de strings."""
+    """Multiselect com 'Todos'. Retorna lista de strings (ou lista completa se 'Todos')."""
     options = sorted({str(o) for o in options})
     token = "Todos"
     mult_opts = [token] + options
@@ -26,83 +27,94 @@ def _ms_todos(label: str, options, current=None, key: str = None):
     return options if (not sel or token in sel) else [s for s in sel if s != token]
 
 def _ensure_datetime_col(df: pd.DataFrame):
-    """Retorna nome da coluna de data existente e convertida para datetime ('DT_INTER' ou 'data_formatada')."""
+    """Garante e retorna a coluna de data ('DT_INTER' ou 'data_formatada') como datetime64[ns]."""
     if "DT_INTER" in df.columns:
         if not pd.api.types.is_datetime64_any_dtype(df["DT_INTER"]):
             df["DT_INTER"] = pd.to_datetime(df["DT_INTER"], format="%Y%m%d", errors="coerce")
         return "DT_INTER"
-    elif "data_formatada" in df.columns:
+    if "data_formatada" in df.columns:
         if not pd.api.types.is_datetime64_any_dtype(df["data_formatada"]):
             df["data_formatada"] = pd.to_datetime(df["data_formatada"], errors="coerce")
         return "data_formatada"
-    else:
-        return None
+    return None
 
 def _ensure_cid3(df: pd.DataFrame):
-    """Gera coluna CID_CAT3 (3 dígitos da DIAG_PRINC) se não existir."""
+    """Gera CID_CAT3 (3 dígitos) se não existir; retorna o nome da coluna ('CID_CAT3' ou None)."""
     if "CID_CAT3" not in df.columns and "DIAG_PRINC" in df.columns:
         df["CID_CAT3"] = df["DIAG_PRINC"].astype(str).str[:3]
     return "CID_CAT3" if "CID_CAT3" in df.columns else None
 
 def _crosscorr_table(x: pd.Series, y: pd.Series, max_lag: int = 60) -> pd.DataFrame:
     """
-    Retorna DataFrame com correlação de Pearson para lags de -max_lag a +max_lag.
-    Definição: corr(lag) = corr( x , y.shift(lag) ).
-      • lag > 0  → o poluente "antecede" internações (efeito antecedente)
-      • lag < 0  → o poluente "segue" internações
+    Correlação de Pearson para lags de -max_lag..+max_lag.
+    corr(lag) = corr( x(t), y(t+lag) ).
+      • lag > 0 → X antecede Y
+      • lag < 0 → X sucede Y
     """
-    x = x.copy().astype(float)
-    y = y.copy().astype(float)
+    x = x.astype(float)
+    y = y.astype(float)
     out = []
     for lag in range(-max_lag, max_lag + 1):
         r = x.corr(y.shift(lag))
-        out.append((lag, r))
-    dfcc = pd.DataFrame(out, columns=["lag", "corr"]).dropna()
-    return dfcc
+        if pd.notna(r):
+            out.append((lag, r))
+    return pd.DataFrame(out, columns=["lag", "corr"])
 
+# =========================
+# Página
+# =========================
 def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     st.title("📈 Poluentes x Doenças Respiratórias — Rio de Janeiro")
 
     with st.expander("ℹ️ Sobre esta página", expanded=False):
         st.markdown(
             """
-            Esta página cruza **internações por doenças respiratórias** (SUS) com as **variáveis ambientais** (QualiAR) do Rio:
-
-            1. Você escolhe os **filtros** (período, idade, CID-10 em 3 dígitos, município).  
-            2. Agregamos as **internações por dia**.  
-            3. Unimos com a série diária ambiental (`data_dia`).  
-            4. Exploramos correlações em duas frentes:
-               - **Sessão 1:** a série de internações com ela mesma (persistência), via **PACF** e **médias móveis** (janelas deslizantes).  
-               - **Sessão 2:** internações x **variáveis ambientais** (séries e correlações de referência).
+            Cruzamos **internações por doenças respiratórias** (SUS) com **variáveis ambientais** (QualiAR).
+            1) Você filtra o **SUS** (período, idade, CID-10, município);  
+            2) Agregamos as **internações por dia**;  
+            3) Unimos com a série ambiental diária (`data_dia`);  
+            4) Exploramos **PACF**, **médias móveis** e **correlações** (lag 0 e por defasagens).
             """
         )
 
+    # -------- Coerções iniciais (sem fragmentar) --------
     df_sus = df_sus.copy()
     df_env = df_rio_treated.copy()
     df_sus['DT_INTER'] = pd.to_datetime(df_sus['DT_INTER'], errors='coerce')
     date_col = _ensure_datetime_col(df_sus)  # 'DT_INTER' ou 'data_formatada'
+    if date_col is None:
+        st.error("Não encontrei a coluna de data de internação ('DT_INTER' ou 'data_formatada') no df_sus.")
+        return
+
+    # Série datetime coerçada (reuso)
+    dt_sus = pd.to_datetime(df_sus[date_col], errors="coerce")
+
     if "data_dia" in df_env.columns and not pd.api.types.is_datetime64_any_dtype(df_env["data_dia"]):
         df_env["data_dia"] = pd.to_datetime(df_env["data_dia"], errors="coerce")
+
     if "IDADE" in df_sus.columns:
         df_sus["IDADE"] = pd.to_numeric(df_sus["IDADE"], errors="coerce")
-    cid_col = _ensure_cid3(df_sus)  
 
-    if date_col and df_sus[date_col].notna().any():
-        min_d = df_sus[date_col].min().date()
-        max_d = df_sus[date_col].max().date()
+    cid_col = _ensure_cid3(df_sus)
+
+    # Limites para date_input (objetos date)
+    if dt_sus.notna().any():
+        min_d = dt_sus.min().date()
+        max_d = dt_sus.max().date()
     else:
         min_d = max_d = None
 
-    if "IDADE" in df_sus.columns:
-        age_min = int(np.nanmin(df_sus["IDADE"])) if df_sus["IDADE"].notna().any() else 0
-        age_max = int(np.nanmax(df_sus["IDADE"])) if df_sus["IDADE"].notna().any() else 100
+    # Opções de filtros
+    if "IDADE" in df_sus.columns and df_sus["IDADE"].notna().any():
+        age_min = int(np.nanmin(df_sus["IDADE"]))
+        age_max = int(np.nanmax(df_sus["IDADE"]))
     else:
         age_min, age_max = 0, 100
 
     cid_opts = df_sus[cid_col].dropna().astype(str).unique().tolist() if cid_col else []
-
     munic_opts = df_sus["MUNIC_RES"].dropna().astype(str).unique().tolist() if "MUNIC_RES" in df_sus.columns else []
 
+    # Estado dos filtros
     if "pxd_filters" not in st.session_state:
         st.session_state["pxd_filters"] = {
             "d_ini": min_d, "d_fim": max_d,
@@ -112,9 +124,7 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
         }
     applied = st.session_state["pxd_filters"]
 
-    # -------------------------
-    # Formulário de filtros 
-    # -------------------------
+    # -------- Formulário --------
     st.header("🔎 Filtros de internações (SUS)")
     with st.form("form_poluentes_doencas"):
         c1, c2 = st.columns(2)
@@ -135,7 +145,8 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
                 idade_min_sel, idade_max_sel = st.slider(
                     "Faixa etária (anos)",
                     min_value=int(age_min), max_value=int(age_max),
-                    value=(int(applied.get("idade_min", age_min)), int(applied.get("idade_max", age_max))),
+                    value=(int(applied.get("idade_min", age_min)),
+                           int(applied.get("idade_max", age_max))),
                     step=1, key="pxd_idade"
                 )
             else:
@@ -154,9 +165,9 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
                 current=applied.get("munics", munic_opts),
                 key="pxd_munic"
             )
-
         st.form_submit_button("Filtrar")
 
+    # Atualiza estado
     st.session_state["pxd_filters"] = {
         "d_ini": d_ini_sel, "d_fim": d_fim_sel,
         "idade_min": idade_min_sel, "idade_max": idade_max_sel,
@@ -164,19 +175,13 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     }
     applied = st.session_state["pxd_filters"]
 
-    # -------------------------
-    # Aplicação dos filtros ao df_sus
-    # -------------------------
-    if date_col is None:
-        st.error("Não encontrei a coluna de data de internação ('DT_INTER' ou 'data_formatada') no df_sus.")
-        return
-
+    # -------- Aplica filtros ao SUS --------
     mask = pd.Series(True, index=df_sus.index)
 
     if applied.get("d_ini") and applied.get("d_fim"):
-        mask &= df_sus[date_col].dt.date.between(applied["d_ini"], applied["d_fim"])
+        mask &= dt_sus.dt.date.between(applied["d_ini"], applied["d_fim"])
 
-    if "IDADE" in df_sus.columns and applied.get("idade_min") is not None and applied.get("idade_max") is not None:
+    if "IDADE" in df_sus.columns and (applied.get("idade_min") is not None) and (applied.get("idade_max") is not None):
         mask &= df_sus["IDADE"].between(applied["idade_min"], applied["idade_max"])
 
     if cid_col and applied.get("cids"):
@@ -188,16 +193,18 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     df_sus_filtrado = df_sus[mask].copy()
     st.caption(f"Após filtros: **{len(df_sus_filtrado):,}** registros SUS.".replace(",", "."))
 
-    # -------------------------
-    # Internações por dia e merge com o ambiental
-    # -------------------------
     if df_sus_filtrado.empty:
         st.info("Nenhum registro após os filtros. Ajuste os critérios e tente novamente.")
         return
 
-    df_sus_filtrado["data_dia"] = df_sus_filtrado[date_col].dt.normalize()
-    internacoes_dia = (df_sus_filtrado.groupby("data_dia").size()
-                       .reset_index(name="internacoes"))
+    # -------- Internações por dia + merge ambiental --------
+    df_sus_filtrado["data_dia"] = pd.to_datetime(df_sus_filtrado[date_col], errors="coerce").dt.normalize()
+    internacoes_dia = (
+        df_sus_filtrado.groupby("data_dia")
+        .size()
+        .reset_index(name="internacoes")
+        .sort_values("data_dia")
+    )
 
     if "data_dia" not in df_env.columns:
         st.error("df_rio_treated não possui a coluna 'data_dia'. Verifique o carregamento.")
@@ -205,18 +212,12 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
 
     df_merged = pd.merge(internacoes_dia, df_env, on="data_dia", how="inner").sort_values("data_dia")
 
-    # -------------------------
-    # Prévia
-    # -------------------------
-    st.subheader("🧾 Prévia do dataset unido (internações x ambiente)")
-    st.dataframe(df_merged.head(), use_container_width=True)
-
-    # =========================================================
-    # SESSÃO 1 — Autocorrelação & Persistência das internações
-    # =========================================================
+    # =========================
+    # SESSÃO 1 — PACF e Médias Móveis
+    # =========================
     st.header("🔁 Sessão 1 — Autocorrelação & persistência das internações")
 
-    ts_int = internacoes_dia.sort_values("data_dia").reset_index(drop=True)
+    ts_int = internacoes_dia.copy()
     s = ts_int["internacoes"].astype(float)
     n_obs = int(s.notna().sum())
     max_lags = int(min(30, max(1, n_obs - 1)))
@@ -225,9 +226,8 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     if n_obs >= 10 and max_lags >= 1:
         pacf_arr = pacf_vals_fn(s.values, nlags=max_lags, method="ywm")
         x_lags = np.arange(1, max_lags + 1)
-        y_vals = pacf_arr[1:] 
-
-        bound = 1.96 / np.sqrt(n_obs)  
+        y_vals = pacf_arr[1:]
+        bound = 1.96 / np.sqrt(n_obs)
 
         fig_pacf = go.Figure()
         fig_pacf.add_hrect(y0=-bound, y1=bound, line_width=0, fillcolor="#95a5a6", opacity=0.2, layer="below")
@@ -254,12 +254,6 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     else:
         st.info("Série insuficiente para PACF (mín. ~10 observações).")
 
-    st.markdown(
-        "> A série de internações tem **alta persistência** e **padrão semanal**; a **média móvel** resume o comportamento recente "
-        "sem usar informação do futuro (**sem vazamento**). Isso ajuda a identificar **qual janela** (3, 7, 14… dias) melhor resume "
-        "a dinâmica para **prever** D+1 e D+7, servindo de baseline e guiando a **engenharia de atributos**."
-    )
-
     st.subheader("🧪 Médias móveis como preditoras (D+1 e D+7)")
     cols_mm = st.columns([1, 1])
     with cols_mm[0]:
@@ -271,27 +265,26 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     base["y_d1"] = base["internacoes"].shift(-1)
     base["y_d7"] = base["internacoes"].shift(-7)
     ks = list(range(1, 31))
-    for k in ks:
-        base[f"mm{k}"] = base["internacoes"].rolling(k, min_periods=1).mean()
 
+    # Sem criar dezenas de colunas no DataFrame (evita fragmentação):
     res = {}
     for target in ["y_d1", "y_d7"]:
         vals = []
         for k in ks:
-            col = f"mm{k}"
-            dfv = base[[col, target]].dropna()
+            mmk = base["internacoes"].rolling(k, min_periods=1).mean()  # série temporária
+            dfv = pd.concat([mmk, base[target]], axis=1).dropna()
             if len(dfv) >= 5:
                 if corr_method_mm == "spearman":
-                    r = dfv[col].rank().corr(dfv[target].rank())
+                    r = dfv.iloc[:, 0].rank().corr(dfv.iloc[:, 1].rank())
                 else:
-                    r = dfv[col].corr(dfv[target])
+                    r = dfv.iloc[:, 0].corr(dfv.iloc[:, 1])
             else:
                 r = np.nan
             vals.append(r)
         res[target] = pd.Series(vals, index=ks)
 
     for target in ["y_d1", "y_d7"]:
-        series = res[target].dropna()
+        series = pd.Series(res[target]).dropna()
         if series.empty:
             st.info(f"Dados insuficientes para correlação ({'D+1' if target=='y_d1' else 'D+7'}).")
             continue
@@ -331,6 +324,7 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
 
     if not dfv.empty:
         if roll_method == "spearman":
+            # cálculo explícito para não criar colunas auxiliares
             def _roll_spearman(a: pd.Series, b: pd.Series, w: int) -> pd.Series:
                 out = []
                 idx = a.index
@@ -362,9 +356,9 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     else:
         st.info("Série insuficiente para correlação rolante.")
 
-    # =========================================================
-    # SESSÃO 2 — Internações x Variáveis ambientais
-    # =========================================================
+    # =========================
+    # SESSÃO 2 — Séries e correlação lag 0 (ambiente)
+    # =========================
     st.header("🌫️ Sessão 2 — Internações x variáveis ambientais")
 
     st.subheader("🧭 Série temporal: Internações x variáveis ambientais (MM30)")
@@ -388,32 +382,30 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
         .dropna(subset=["data_dia"]).sort_values("data_dia")
 
     if vars_sel and not df_plot.empty:
-        # MM30
+        # MM30 sem fragmentar: cria DataFrame auxiliar e concatena 1x
         df_mm = df_plot.set_index("data_dia")
-        cols_right = vars_sel.copy()
-        cols_all = ["internacoes"] + cols_right
-        for c in cols_all:
-            if c in df_mm.columns:
-                df_mm[f"{c}_mm30"] = df_mm[c].rolling("30D", min_periods=1).mean()
-        df_mm = df_mm.reset_index()
+        mm_dict = {"internacoes_mm30": df_mm["internacoes"].rolling("30D", min_periods=1).mean()}
+        for v in vars_sel:
+            mm_dict[f"{v}_mm30"] = df_mm[v].rolling("30D", min_periods=1).mean()
+        df_mm = pd.concat(mm_dict, axis=1).reset_index()
 
-        df_plot_norm = df_mm.copy()
         if use_z:
-            for v in cols_right:
-                col = f"{v}_mm30"
-                mu = df_plot_norm[col].mean()
-                sd = df_plot_norm[col].std(ddof=0)
-                df_plot_norm[col] = (df_plot_norm[col] - mu) / (sd if sd not in (0, np.nan) else 1.0)
+            # normaliza só as séries do eixo direito
+            z_cols = [f"{v}_mm30" for v in vars_sel]
+            z_df = df_mm[z_cols]
+            mu = z_df.mean()
+            sd = z_df.std(ddof=0).replace(0, 1.0)
+            df_mm[z_cols] = (z_df - mu) / sd
 
         fig_ts = make_subplots(specs=[[{"secondary_y": True}]])
         fig_ts.add_trace(
-            go.Scatter(x=df_plot_norm["data_dia"], y=df_plot_norm["internacoes_mm30"],
+            go.Scatter(x=df_mm["data_dia"], y=df_mm["internacoes_mm30"],
                        mode="lines", name="Internações (MM30)", line=dict(width=2, color="#2c3e50")),
             secondary_y=False
         )
-        for v in cols_right:
+        for v in vars_sel:
             fig_ts.add_trace(
-                go.Scatter(x=df_plot_norm["data_dia"], y=df_plot_norm[f"{v}_mm30"],
+                go.Scatter(x=df_mm["data_dia"], y=df_mm[f"{v}_mm30"],
                            mode="lines", name=f"{v} (MM30)"),
                 secondary_y=True
             )
@@ -430,9 +422,7 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
         st.info("Selecione ao menos uma variável ambiental para o eixo direito.")
 
     st.subheader("📊 Correlação lag 0 — Internações x variáveis ambientais (toda a série)")
-
     method0 = st.selectbox("Método", options=["spearman", "pearson"], index=0, key="pxd_lag0_m")
-    # alinhamento e limpeza
     df_valid = df_merged.dropna(subset=["internacoes"]).copy()
     features = [c for c in df_valid.columns if c not in non_features]
 
@@ -440,17 +430,16 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
         if method0 == "spearman":
             Xr = df_valid[features].rank()
             yr = df_valid["internacoes"].rank()
-            s = Xr.corrwith(yr, method="pearson")
+            s0 = Xr.corrwith(yr, method="pearson")
         else:
-            s = df_valid[features].corrwith(df_valid["internacoes"], method="pearson")
+            s0 = df_valid[features].corrwith(df_valid["internacoes"], method="pearson")
 
-        s = s.dropna().sort_values(key=lambda v: v.abs(), ascending=False)
-
-        if not s.empty:
+        s0 = s0.dropna().sort_values(key=lambda v: v.abs(), ascending=False)
+        if not s0.empty:
             fig_corr = go.Figure(go.Bar(
-                x=s.index.tolist(), y=s.values,
-                marker=dict(color=s.values, colorscale="RdBu", cmin=-1, cmax=1, showscale=True),
-                text=[f"{v:.2f}" for v in s.values],
+                x=s0.index.tolist(), y=s0.values,
+                marker=dict(color=s0.values, colorscale="RdBu", cmin=-1, cmax=1, showscale=True),
+                text=[f"{v:.2f}" for v in s0.values],
                 textposition="outside"
             ))
             fig_corr.add_hline(y=0, line_dash="dash", line_color="#7f8c8d")
@@ -466,65 +455,60 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
             st.info("Sem colunas numéricas válidas para a correlação.")
     else:
         st.info("Nenhuma variável ambiental disponível para correlação.")
-        
-    # --------------------------------------------
-    # 2.3) Melhor janela + lag por variável (Spearman)
-    # --------------------------------------------
+
+    # =========================
+    # SESSÃO 2.3 — Melhor janela + lag (Spearman) — PERFORMÁTICO
+    # =========================
     st.subheader("🏁 Melhor janela + lag por variável (Spearman)")
 
     df = df_merged.copy()
-
     df["internacoes_d1"] = df["internacoes"].shift(-1)
     df["internacoes_d7"] = df["internacoes"].shift(-7)
 
+    # Lista de candidatos (case-insensitive)
     pollutant_candidates = ['co','no','no2','nox','so2','o3','pm10','pm2_5','AQI','temp','chuva','ur']
-
     cols_lower_map = {c.lower(): c for c in df.columns}
     pollutants = [(v if v in df.columns else cols_lower_map.get(v.lower())) for v in pollutant_candidates]
-    pollutants = [v for v in dict.fromkeys(pollutants) if v is not None]  
+    pollutants = [v for v in dict.fromkeys(pollutants) if v is not None]
 
+    # Numéricos somente onde precisamos
     for c in pollutants + ["internacoes_d1", "internacoes_d7"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
     janelas = [3, 7, 14, 21, 30, 60, 90, 120, 150]
-    shifts = list(range(0, 16))  # 0..15
+    shifts = range(0, 16)  # 0..15
 
-    for var in pollutants:
-        if var not in df.columns:
-            continue
-        s = df[var]
-        for w in janelas:
-            df[f"{var}_mm{w}"] = s.rolling(window=w, min_periods=w).mean()
-
+    # Em vez de criar dezenas de colunas mm e mais dezenas shiftadas (que fragmenta),
+    # calculamos on-the-fly e NUNCA inserimos no df principal:
     results = []
     for tgt in ["internacoes_d1", "internacoes_d7"]:
         if tgt not in df.columns:
             continue
+        y = df[tgt]
         for var in pollutants:
+            if var not in df.columns:
+                continue
+            s = df[var]
             for w in janelas:
-                base_col = f"{var}_mm{w}"
-                if base_col not in df.columns:
-                    continue
+                mm = s.rolling(window=w, min_periods=w).mean()
                 for k in shifts:
-                    x = df[base_col].shift(k)
-                    y = df[tgt]
+                    x = mm.shift(k)
                     sub = pd.concat([x, y], axis=1).dropna()
                     if len(sub) >= 5:
                         corr = sub.corr(method="spearman").iloc[0, 1]
                         results.append({"target": tgt, "variavel": var, "janela": w, "shift": k, "spearman": corr})
 
     res = pd.DataFrame(results)
-
     if res.empty:
         st.info("Sem resultados para as combinações avaliadas (verifique período/variáveis).")
     else:
         best_per_var = (
             res.assign(abs_s=res["spearman"].abs())
-            .sort_values(["target", "variavel", "abs_s"], ascending=[True, True, False])
-            .groupby(["target", "variavel"], as_index=False)
-            .first()
-            .drop(columns="abs_s")
+               .sort_values(["target", "variavel", "abs_s"], ascending=[True, True, False])
+               .groupby(["target", "variavel"], as_index=False)
+               .first()
+               .drop(columns="abs_s")
         )
 
         for tgt, titulo in [("internacoes_d1", "Internações D+1"), ("internacoes_d7", "Internações D+7")]:
@@ -558,52 +542,3 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
             tbl["abs_s"] = pd.to_numeric(tbl["spearman"], errors="coerce").abs()
             tbl = tbl.sort_values(["target", "abs_s"], ascending=[True, False]).drop(columns="abs_s")
             st.dataframe(tbl.reset_index(drop=True), use_container_width=True)
-    
-    # =========================================================
-    # SESSÃO 3 — Curvas de correlação por lag (CCF)
-    # =========================================================
-    st.header("🔀 Sessão 3 — Curvas de correlação por lag (CCF)")
-
-    non_features = {"data_dia", "internacoes", "ano", "mes", "dia", "Qualidade_do_Ar"}
-    env_cols_all = [c for c in df_merged.columns
-                    if c not in non_features and pd.api.types.is_numeric_dtype(df_merged[c])]
-
-    if env_cols_all:
-        c1, c2 = st.columns([2, 1])
-        with c1:
-            vars_ccf = st.multiselect(
-                "Variáveis para analisar (até 5)",
-                options=env_cols_all,
-                default=[v for v in ["no2", "o3", "pm2_5"] if v in env_cols_all][:3],
-                key="pxd_ccf_vars"
-            )
-        with c2:
-            max_lag = st.slider("Lags (±)", min_value=5, max_value=30, value=15, step=1, key="pxd_ccf_lags")
-
-        if vars_ccf:
-            fig_ccf = go.Figure()
-            n_eff = int(df_merged["internacoes"].notna().sum())
-            bound = (1.96 / np.sqrt(n_eff)) if n_eff > 0 else None
-
-            for v in vars_ccf[:5]:
-                x = df_merged[v].astype(float)
-                y = df_merged["internacoes"].astype(float)
-                dfcc = _crosscorr_table(x, y, max_lag=max_lag) 
-                fig_ccf.add_trace(go.Scatter(x=dfcc["lag"], y=dfcc["corr"], mode="lines+markers", name=v))
-
-            fig_ccf.add_vline(x=0, line_dash="dash", line_color="#7f8c8d")
-            if bound is not None and np.isfinite(bound):
-                fig_ccf.add_hrect(y0=-bound, y1=bound, line_width=0, fillcolor="#95a5a6", opacity=0.15, layer="below")
-
-            fig_ccf.update_layout(
-                title="Correlação por lag — positivo: variável antecede internações",
-                xaxis_title="Lag (dias) — corr( X(t), Y(t+lag) )",
-                yaxis_title="Correlação (Pearson)",
-                margin=dict(l=20, r=20, t=50, b=20),
-                legend_title_text="Variável"
-            )
-            st.plotly_chart(fig_ccf, use_container_width=True)
-        else:
-            st.info("Selecione ao menos uma variável para traçar as curvas de correlação por lag.")
-    else:
-        st.info("Não há variáveis numéricas ambientais para esta análise.")
