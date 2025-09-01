@@ -15,11 +15,13 @@ pagina_selecionada = st.sidebar.radio(
     ["🌆 Qualidade do ar Rio", "🩺 Dados de Saúde", "🗺️ Estações (EDA)", "📈 Poluentes x Doenças"]
 )
 
-# @st.cache_data(show_spinner=True)
-# def _get_sus_prepared():
-#     df_raw = load_sus_data()
-#     df_prepared = prepare_sus_df(df_raw)
-#     return df_prepared
+@st.cache_data(show_spinner=True)
+def _get_sus_prepared():
+    df_raw = load_sus_data()
+    df_prepared = prepare_sus_df(df_raw)
+    return df_prepared
+
+df_sus = _get_sus_prepared()
 
 @st.cache_data(show_spinner=True)
 def _get_estacoes_data():
@@ -76,40 +78,15 @@ def _get_rio_prepared_treated():
 
 df_rio_treated = _get_rio_prepared_treated()
 
+# Roteamento para páginas
 if pagina_selecionada == "🌆 Qualidade do ar Rio":
     analise_rio.show(df_rio)
 
 elif pagina_selecionada == "🩺 Dados de Saúde":
-    # Carrega ON-DEMAND
-    with st.spinner("Carregando dados do SUS..."):
-        df_2012 = load_sus_data(2012)
-        df_2013 = load_sus_data(2013)
-        df_2014 = load_sus_data(2014)
-        df_2015 = load_sus_data(2015)
-        df_2016 = load_sus_data(2016)
-        df_2017 = load_sus_data(2017)
-        df_2018 = load_sus_data(2018)
-        df_2019 = load_sus_data(2019)
-        df_2020 = load_sus_data(2020)
-        df_2021 = load_sus_data(2021)
-        df_2022 = load_sus_data(2022)
-        df_2023 = load_sus_data(2023)
-        df_2024 = load_sus_data(2024)
-        df_sus = pd.concat([
-            df_2012, df_2013, df_2014, df_2015, df_2016, df_2017,
-            df_2018, df_2019, df_2020, df_2021, df_2022, df_2023,
-            df_2024
-        ], ignore_index=True)
-        df_sus = prepare_sus_df(df_sus)
-        # df_sus = _get_sus_prepared()
     dados_saude.show(df_sus)
 
 elif pagina_selecionada == "🗺️ Estações (EDA)":
     analise_estacoes.show(df_estacoes)
 
 elif pagina_selecionada == "📈 Poluentes x Doenças":
-    pass
-    # Se essa página também usa SUS, carregue aqui on-demand:
-    # with st.spinner("Carregando dados (SUS + Rio)..."):
-        # df_sus = _get_sus_prepared()
-    # poluentes_doencas.show(df_sus, df_rio_treated)
+    poluentes_doencas.show(df_sus, df_rio_treated)
