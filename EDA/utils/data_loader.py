@@ -26,23 +26,18 @@ def load_rio_de_janeiro_qualiar_treated_data():
   return df_rio_de_janeiro_qualiar_treated
 
 @st.cache_data(show_spinner=True)
-def load_sus_data() -> pd.DataFrame:
+def load_sus_data(ano) -> pd.DataFrame:
     """
     Lê os CSVs anuais diretamente do GitHub e concatena em um único DataFrame.
     Converte DT_INTER e DT_SAIDA para datetime no formato exigido (%Y%m%d).
     NÃO altera nomes de colunas — usa exatamente os do CSV.
     """
-    anos = range(2012, 2025)
+
     generic_url = (
         "https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/datasus/Ano/dados_filtrados_{ano}.csv"
     )
 
-    frames = []
-    for ano in anos:
-        df = pd.read_csv(generic_url.format(ano=ano), sep=",")
-        frames.append(df)
-
-    df_sus = pd.concat(frames, ignore_index=True)
+    df_sus = pd.read_csv(generic_url.format(ano=ano), sep=",")
 
     if "DT_INTER" in df_sus.columns:
         df_sus["DT_INTER"] = pd.to_datetime(df_sus["DT_INTER"].astype(str), format="%Y%m%d", errors="coerce")
