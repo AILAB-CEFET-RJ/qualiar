@@ -153,7 +153,7 @@ def prepare_sus_df(df_sus: pd.DataFrame) -> pd.DataFrame:
         df["CID_CAT3"] = df["DIAG_PRINC"].apply(_cid_to_cat3)
         df["CID_GRUPO_J"] = df["DIAG_PRINC"].apply(_map_grupo_J)
 
-    
+    df.drop(columns=['UF_ZI', 'ANO_CMPT', 'MES_CMPT','MUNIC_MOV', 'CEP', 'NASC','DIAG_SECUN','COD_IDADE', 'RACA_COR','ETNIA','data_formatada', 'ano_arquivo'], inplace=True, errors='ignore')
     
     return df
 
