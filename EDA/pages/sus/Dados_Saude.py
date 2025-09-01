@@ -99,9 +99,15 @@ def show(df_sus: pd.DataFrame):
     sexo_col = "SEXO_TXT" if "SEXO_TXT" in df.columns else ("SEXO" if "SEXO" in df.columns else None)
     hosp_col = "HOSPITAL" if "HOSPITAL" in df.columns else ("CNES" if "CNES" in df.columns else None)
 
-    min_d = max_d = None
-    if "DT_INTER" in df.columns and df["DT_INTER"].notna().any():
-        min_d, max_d = df["DT_INTER"].min(), df["DT_INTER"].max()
+    min_date = max_date = None
+    dt_inter = None 
+    if "DT_INTER" in df.columns:
+        dt_inter = pd.to_datetime(df["DT_INTER"], errors="coerce") 
+        dates = dt_inter.dropna()                                  
+        if not dates.empty:
+            min_date = dates.min()
+            max_date = dates.max()
+
 
     sexo_opts  = df[sexo_col].dropna().unique().tolist() if sexo_col else []
     munic_opts = df["MUNIC_RES"].dropna().astype(str).unique().tolist() if "MUNIC_RES" in df.columns else []
@@ -118,8 +124,8 @@ def show(df_sus: pd.DataFrame):
     
     if "sus_filters" not in st.session_state:
         st.session_state["sus_filters"] = {
-        "d_ini": (min_d.date() if min_d is not None else None),
-        "d_fim": (max_d.date() if max_d is not None else None),
+        "d_ini": min_date,
+        "d_fim": max_date,
         "sexo":  list(map(str, sexo_opts)),
         "faixa": list(map(str, faixa_opts)),
         "grupo": list(map(str, grupo_opts)),
@@ -131,12 +137,12 @@ def show(df_sus: pd.DataFrame):
     applied = st.session_state["sus_filters"]
 
     with st.sidebar.form("form_filtros_sus"):
-        if min_d is not None and max_d is not None:
+        if min_date is not None and max_date is not None:
             d_ini_sel, d_fim_sel = st.date_input(
                 "Período de internação",
-                value=(applied["d_ini"], applied["d_fim"]),
-                min_value=min_d.date(),
-                max_value=max_d.date(),
+                value=(min_date.date(), max_date.date()),
+                min_value=min_date.date(),
+                max_value=max_date.date(),
                 key="ms_periodo",
             )
         else:
@@ -193,8 +199,8 @@ def show(df_sus: pd.DataFrame):
     applied = st.session_state["sus_filters"] 
 
     mask = pd.Series(True, index=df.index)
-    if applied["d_ini"] and applied["d_fim"] and "DT_INTER" in df.columns:
-        mask &= df["DT_INTER"].dt.date.between(applied["d_ini"], applied["d_fim"])
+    if (dt_inter is not None) and (d_ini_sel and d_fim_sel):
+        mask &= dt_inter.dt.date.between(d_ini_sel, d_fim_sel)
     if sexo_col and applied["sexo"]:
         mask &= df[sexo_col].astype(str).isin(applied["sexo"])
     if "FAIXA_ETARIA" in df.columns and applied["faixa"]:
@@ -213,6 +219,9 @@ def show(df_sus: pd.DataFrame):
         mask &= df["DIAG_PRINC"].astype(str).str[:3].isin(applied["cid3"])
     
     dff = df[mask].copy()
+    
+    if "DT_INTER" in dff.columns:
+        dff["DT_INTER"] = pd.to_datetime(dff["DT_INTER"], errors="coerce")
 
     n_total = len(df)
     n_filtrado = len(dff)
@@ -242,9 +251,18 @@ def show(df_sus: pd.DataFrame):
     st.caption("Dica: use os filtros à esquerda para comparar períodos, grupos etários e diagnósticos.")
 
     if "DT_INTER" in dff.columns and dff["DT_INTER"].notna().any():
-        dff_daily = dff.set_index("DT_INTER").sort_index()
-        ts_daily = dff_daily.index.to_series().groupby(pd.Grouper(freq="D")).count().rename("Internações por dia")
-        ts_ma7 = ts_daily.rolling(7, min_periods=1).mean().rename("MM7")
+        # Índice datetime válido para o Grouper
+        dff_daily = dff.dropna(subset=["DT_INTER"]).set_index("DT_INTER").sort_index()
+
+        # Contagem por dia (sem exigir coluna específica)
+        ts_daily = (
+            dff_daily
+            .groupby(pd.Grouper(freq="D"))
+            .size()
+            .rename("Internações por dia")
+        )
+
+        ts_ma7  = ts_daily.rolling(7,  min_periods=1).mean().rename("MM7")
         ts_ma30 = ts_daily.rolling(30, min_periods=1).mean().rename("MM30")
         
         c1, c2, c3 = st.columns([1,1,1])
@@ -412,11 +430,14 @@ def show(df_sus: pd.DataFrame):
 
     
     if set(["MORTE","DT_INTER"]).issubset(dff.columns) and dff["MORTE"].notna().any():
-        mort_daily = (dff.set_index("DT_INTER")
-                         .sort_index()
-                         .groupby(pd.Grouper(freq="D"))["MORTE"]
-                         .mean()
-                         .rename("Taxa diária"))
+        mort_daily = (
+            dff.dropna(subset=["DT_INTER"])
+            .set_index("DT_INTER")
+            .sort_index()
+            .groupby(pd.Grouper(freq="D"))["MORTE"]
+            .mean()
+            .rename("Taxa diária")
+        )
         mort_ma30 = mort_daily.rolling(30, min_periods=7).mean().rename("MM30")
         fig_mort = go.Figure()
         fig_mort.add_trace(go.Scatter(x=mort_daily.index, y=mort_daily.values, mode="lines", name="Diária", opacity=0.3))

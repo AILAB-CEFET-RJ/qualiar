@@ -32,19 +32,16 @@ def load_sus_data() -> pd.DataFrame:
     Converte DT_INTER e DT_SAIDA para datetime no formato exigido (%Y%m%d).
     NÃO altera nomes de colunas — usa exatamente os do CSV.
     """
-    url1 = "https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/datasus/INTERNACOES_STREAMLIT_parte1.csv"
-    url2 = "https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/datasus/INTERNACOES_STREAMLIT_parte2.csv"
-    url3 = "https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/datasus/INTERNACOES_STREAMLIT_parte3.csv"
+    url1 = "https://media.githubusercontent.com/media/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/datasus/INTERNACOES_STREAMLIT_parte1.csv"
+    url2 = "https://media.githubusercontent.com/media/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/datasus/INTERNACOES_STREAMLIT_parte2.csv"
+    url3 = "https://media.githubusercontent.com/media/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/datasus/INTERNACOES_STREAMLIT_parte3.csv"
     
     df1 = pd.read_csv(url1, sep=",")
     df2 = pd.read_csv(url2, sep=",")
     df3 = pd.read_csv(url3, sep=",")
     df_sus = pd.concat([df1, df2, df3], ignore_index=True)
     
-    if "DT_INTER" in df_sus.columns:
-        df_sus["DT_INTER"] = pd.to_datetime(df_sus["DT_INTER"], format="%Y%m%d")
-    if "DT_SAIDA" in df_sus.columns:
-        df_sus["DT_SAIDA"] = pd.to_datetime(df_sus["DT_SAIDA"], format="%Y%m%d")
+
     
     return df_sus
 #     anos = range(2012, 2025)
