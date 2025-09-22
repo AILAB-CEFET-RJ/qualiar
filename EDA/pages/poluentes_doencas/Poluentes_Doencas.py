@@ -339,7 +339,9 @@ def show(df_sus: pd.DataFrame, df_rio_treated: pd.DataFrame):
     method0 = st.selectbox("Método", options=["spearman", "pearson"], index=0, key="pxd_lag0_m")
     df_valid = df_merged.dropna(subset=["internacoes"]).copy()
     features = [c for c in df_valid.columns if c not in non_features]
-
+    st.write(df_valid.columns)
+    st.write(df_valid.dtypes)
+    st.write(features)
     if features:
         if method0 == "spearman":
             Xr = df_valid[features].rank()
