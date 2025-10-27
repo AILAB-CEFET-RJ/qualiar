@@ -1,0 +1,18 @@
+Algoritmo que pula os gaps quando tem que pula
+https://github.com/AILAB-CEFET-RJ/cic1205/blob/main/notebooks/time_series.ipynb
+cic1205/notebooks/time_series.ipynb at main · AILAB-CEFET-RJ/cic1205
+Repo for the course CIC1205 - Machine Learning. Contribute to AILAB-CEFET-RJ/cic1205 development by creating an account on GitHub.
+ 
+
+ AUmentar camadas
+
+ M1 até M5 exemplo
+ 10 rodadas de cada um
+
+ Print da árvore gerada RF
+
+ Testar apenas com  as variáveis mais importantes
+
+ Regressão por quantil
+
+ Mandar msg proRamin - Portal XgBoost 
