@@ -27,7 +27,7 @@
 // - Caso o CSV mude de esquema, os componentes tentam se adaptar aos nomes de colunas existentes.
 // ===============================================
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Plot from "react-plotly.js";
 import Papa from "papaparse";
 
