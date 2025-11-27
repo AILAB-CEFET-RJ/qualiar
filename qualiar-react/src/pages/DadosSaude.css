@@ -1,0 +1,280 @@
+/* DadosSaude.css */
+.dados-saude-container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.dados-saude-title {
+  margin-bottom: 12px;
+}
+
+/* Filtros */
+.filtros-container {
+  margin-bottom: 24px;
+  padding: 16px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+}
+
+.filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.filtro-group {
+  margin-bottom: 12px;
+}
+
+.filtro-group label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.filtro-select {
+  min-width: 200px;
+  min-height: 100px;
+  width: 100%;
+}
+
+.date-input-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.date-input {
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Métricas */
+.metricas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.metrica-card {
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #e9ecef;
+}
+
+.metrica-valor {
+  font-size: 2em;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.metrica-label {
+  color: #666;
+  font-size: 0.9em;
+}
+
+.contador-registros {
+  color: #666;
+  font-size: 0.9em;
+  margin-top: 8px;
+}
+
+/* Configurações */
+.config-group {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.config-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Seções */
+.section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+/* Heatmaps */
+.heatmaps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.heatmap-container {
+  margin-bottom: 16px;
+}
+
+/* Gráficos */
+.chart-container {
+  margin-bottom: 16px;
+}
+
+.demographic-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* Botões */
+.export-button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.2s;
+}
+
+.export-button:hover {
+  background-color: #0056b3;
+}
+
+/* Rodapé */
+.footer {
+  color: #666;
+  font-size: 0.9em;
+  text-align: center;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
+}
+
+/* Estados de loading e erro */
+.loading-state {
+  padding: 24px;
+  text-align: center;
+  font-size: 1.1em;
+}
+
+.error-state {
+  padding: 24px;
+  color: #900;
+  background-color: #ffe6e6;
+  border: 1px solid #ffcccc;
+  border-radius: 4px;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .dados-saude-container {
+    padding: 16px;
+  }
+  
+  .filtros-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .metricas-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  
+  .heatmaps-grid,
+  .demographic-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .date-input-group {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .config-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .metricas-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .metrica-valor {
+    font-size: 1.5em;
+  }
+}
+
+/* Estilos para o MultiSelect */
+.filtro-group {
+  margin-bottom: 15px;
+}
+
+.filtro-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+}
+
+.filtro-select {
+  width: 100%;
+  min-height: 120px;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 14px;
+}
+
+.filtro-select:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+}
+
+.filtro-select:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.filtro-hint {
+  font-size: 0.8em;
+  color: #666;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* Estilo para opções selecionadas */
+.filtro-select option:checked {
+  background-color: #4299e1;
+  color: white;
+}
+
+/* Scroll personalizado */
+.filtro-select::-webkit-scrollbar {
+  width: 8px;
+}
+
+.filtro-select::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.filtro-select::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.filtro-select::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
