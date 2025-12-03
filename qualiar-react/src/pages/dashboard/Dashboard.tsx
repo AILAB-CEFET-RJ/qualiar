@@ -17,7 +17,7 @@ const POLUENTES_TRADUCAO: Record<string, string> = {
   temp: "Temperatura (°C)",
   ur: "Umidade Relativa (%)",
 };
-
+ 
 // URLs de dados (iguais às do Python)
 const SENSOR_URLS: Record<string, string> = {
   bangu: "https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/Sensors/por_estacao/df_sensor_bangu_preenchido.csv",

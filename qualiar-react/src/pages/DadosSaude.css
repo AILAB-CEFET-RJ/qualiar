@@ -1,112 +1,138 @@
-/* DadosSaude.css */
 .dados-saude-container {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 .dados-saude-title {
-  margin-bottom: 12px;
+  margin-bottom: 24px;
+  color: #2c3e50;
+  font-size: 28px;
 }
 
 /* Filtros */
 .filtros-container {
-  margin-bottom: 24px;
-  padding: 16px;
-  background-color: #f5f5f5;
-  border-radius: 8px;
+  margin-bottom: 32px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+}
+
+.filtros-container h3 {
+  margin-bottom: 16px;
+  color: #495057;
+  font-size: 18px;
 }
 
 .filtros-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
+  gap: 20px;
+  align-items: start;
 }
 
-.filtro-group {
-  margin-bottom: 12px;
-}
-
-.filtro-group label {
-  display: block;
-  margin-bottom: 4px;
-  font-weight: 500;
-}
-
-.filtro-select {
-  min-width: 200px;
-  min-height: 100px;
-  width: 100%;
-}
-
-.date-input-group {
+/* Date Range Picker */
+.date-range-picker {
   display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+
+.date-range-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #495057;
+}
+
+.date-inputs-container {
+  display: flex;
   align-items: center;
+  gap: 12px;
 }
 
 .date-input {
-  padding: 4px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 14px;
+  flex: 1;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: #4dabf7;
+  box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.1);
+}
+
+.date-range-separator {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+/* Seções */
+.section {
+  margin-bottom: 40px;
+}
+
+.section-title {
+  margin-bottom: 20px;
+  color: #2c3e50;
+  font-size: 22px;
+  border-bottom: 2px solid #e9ecef;
+  padding-bottom: 8px;
 }
 
 /* Métricas */
 .metricas-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.metrica-card {
-  padding: 16px;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  text-align: center;
-  border: 1px solid #e9ecef;
-}
-
-.metrica-valor {
-  font-size: 2em;
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-
-.metrica-label {
-  color: #666;
-  font-size: 0.9em;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
 .contador-registros {
-  color: #666;
-  font-size: 0.9em;
-  margin-top: 8px;
+  padding: 12px;
+  background-color: #e3f2fd;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 14px;
+  color: #1976d2;
+  border: 1px solid #bbdefb;
 }
 
 /* Configurações */
 .config-group {
-  margin-bottom: 16px;
   display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
 }
 
 .config-checkbox {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  font-size: 14px;
+  color: #495057;
+  cursor: pointer;
 }
 
-/* Seções */
-.section {
-  margin-bottom: 24px;
+.config-checkbox input {
+  cursor: pointer;
 }
 
-.section-title {
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #e9ecef;
+/* Gráficos */
+.chart-container {
+  background-color: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 /* Heatmaps */
@@ -117,164 +143,91 @@
 }
 
 .heatmap-container {
-  margin-bottom: 16px;
+  background-color: white;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
 }
 
-/* Gráficos */
-.chart-container {
+.heatmap-container h3 {
   margin-bottom: 16px;
+  color: #495057;
+  font-size: 16px;
 }
 
-.demographic-grid {
+/* Distribuição por Sexo */
+.distribution-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
 }
 
-/* Botões */
-.export-button {
+/* Loading e Error States */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  font-size: 18px;
+  color: #6c757d;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  font-size: 18px;
+  color: #dc3545;
+  text-align: center;
+}
+
+.error-state button {
+  margin-top: 20px;
   padding: 10px 20px;
   background-color: #007bff;
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 1em;
-  transition: background-color 0.2s;
+  font-size: 16px;
 }
 
-.export-button:hover {
+.error-state button:hover {
   background-color: #0056b3;
 }
 
-/* Rodapé */
+/* Footer */
 .footer {
-  color: #666;
-  font-size: 0.9em;
-  text-align: center;
-  margin-top: 32px;
-  padding-top: 16px;
+  margin-top: 40px;
+  padding-top: 20px;
   border-top: 1px solid #e9ecef;
-}
-
-/* Estados de loading e erro */
-.loading-state {
-  padding: 24px;
   text-align: center;
-  font-size: 1.1em;
-}
-
-.error-state {
-  padding: 24px;
-  color: #900;
-  background-color: #ffe6e6;
-  border: 1px solid #ffcccc;
-  border-radius: 4px;
+  color: #6c757d;
+  font-size: 14px;
 }
 
 /* Responsividade */
-@media (max-width: 768px) {
-  .dados-saude-container {
-    padding: 16px;
+@media (max-width: 1024px) {
+  .heatmaps-grid,
+  .distribution-grid {
+    grid-template-columns: 1fr;
   }
-  
+}
+
+@media (max-width: 768px) {
   .filtros-grid {
     grid-template-columns: 1fr;
   }
   
-  .metricas-grid {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  }
-  
-  .heatmaps-grid,
-  .demographic-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  
-  .date-input-group {
+  .date-inputs-container {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
   }
   
-  .config-group {
-    flex-direction: column;
-    gap: 8px;
+  .date-range-separator {
+    text-align: center;
   }
-}
-
-@media (max-width: 480px) {
-  .metricas-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .metrica-valor {
-    font-size: 1.5em;
-  }
-}
-
-/* Estilos para o MultiSelect */
-.filtro-group {
-  margin-bottom: 15px;
-}
-
-.filtro-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 500;
-  color: #333;
-}
-
-.filtro-select {
-  width: 100%;
-  min-height: 120px;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: white;
-  font-size: 14px;
-}
-
-.filtro-select:focus {
-  outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
-}
-
-.filtro-select:disabled {
-  background-color: #f5f5f5;
-  color: #999;
-  cursor: not-allowed;
-}
-
-.filtro-hint {
-  font-size: 0.8em;
-  color: #666;
-  margin-top: 4px;
-  font-style: italic;
-}
-
-/* Estilo para opções selecionadas */
-.filtro-select option:checked {
-  background-color: #4299e1;
-  color: white;
-}
-
-/* Scroll personalizado */
-.filtro-select::-webkit-scrollbar {
-  width: 8px;
-}
-
-.filtro-select::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
-}
-
-.filtro-select::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
-}
-
-.filtro-select::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
 }
