@@ -16,12 +16,6 @@ function parseDateFlexible(raw: any): Date | null {
   return null;
 }
 
-function toNumberOrNaN(v: any): number {
-  if (v === null || v === undefined || v === "") return NaN;
-  const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : NaN;
-}
-
 // ----------------------------------------------------
 // 1. loadRioDeJaneiroQualiarData
 // ----------------------------------------------------

@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import Plot from "react-plotly.js";
-import Papa from "papaparse";
 
 import { useCsvData, rioDataParser } from "../../hooks/useCsvData";
 import { useDateFilter } from "../../hooks/useFilters";
@@ -15,6 +14,7 @@ import { mergeRawIntoTreated } from "../../utils/data";
 import { formatNumber, kpiInt } from "../../utils/formatters";
 import { classificaAQI } from "../../utils/classifiers";
 import type { RioData } from "../../types/data";
+import { CsvExportButton, formatDateFields } from '../../components/common/CsvExportButton';
 import "./AnaliseRio.css";
 import {
   RioIcon,
@@ -25,8 +25,7 @@ import {
   CorrelationIcon,
   ScatterIcon,
   TestIcon,
-  ExtremeIcon,
-  DownloadIcon
+  ExtremeIcon
 } from '../../components/Icons';
 
 export default function AnaliseRio() {
@@ -634,27 +633,15 @@ export default function AnaliseRio() {
       )}
 
       {/* Exportar dados */}
-      <div className="section-rio">
-        <h2 className="section-title-rio">
-          <DownloadIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-          Exportar dados filtrados
-        </h2>
-        <button
-          onClick={() => {
-            const csv = Papa.unparse(filteredData);
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'rio_filtrado.csv';
-            a.click();
-            URL.revokeObjectURL(url);
-          }}
-          className="botao-exportar"
-        >
-          Baixar CSV filtrado
-        </button>
-      </div>
+      <CsvExportButton
+        data={filteredData}
+        filename="rio_filtrado"
+        label="Exportar dados filtrados"
+        buttonText="Baixar CSV"
+        iconSize={24}
+        iconColor="#38a169"
+        transformData={(data) => formatDateFields(data, ['data_dia'])}
+      />
     </div>
   );
 }

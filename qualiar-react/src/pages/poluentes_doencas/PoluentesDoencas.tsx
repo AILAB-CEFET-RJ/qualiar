@@ -1,11 +1,10 @@
-// PoluentesDoencas.tsx
-import { useEffect, useState, useMemo, useCallback, type JSX } from "react";
+import { useEffect, useState, useMemo, type JSX } from "react";
 import Plot from "react-plotly.js";
 import { 
   loadSUSData, 
   loadRioDeJaneiroQualiarTreatedData 
 } from "../../services/dataLoader";
-import "./PoluentesDoencas.css"; // Importando o arquivo CSS
+import "./PoluentesDoencas.css";
 import {
   TrendIcon,
   InfoIcon,
@@ -14,6 +13,11 @@ import {
   PollutionIcon,
   CorrelationIcon
 } from '../../components/Icons';
+import type { SUSData, FilterState, CorrelationResult} from "../../types/data";
+import {
+  spearmanCorrelation,
+  calculateRollingAverage
+} from "../../utils/math"; // Importando funções do math.ts
 
 // Tipos para os dados
 interface RioData {
@@ -26,32 +30,6 @@ interface RioData {
   no2?: string | number;
   o3?: string | number;
   [key: string]: any;
-}
-
-interface SUSData {
-  DT_INTER?: string | Date;
-  IDADE?: string | number;
-  CID_CAT3?: string;
-  DIAG_PRINC?: string;
-  MUNIC_RES?: string;
-  [key: string]: any;
-}
-
-interface FilterState {
-  d_ini: Date | null;
-  d_fim: Date | null;
-  idade_min: number | null;
-  idade_max: number | null;
-  cids: string[];
-  munics: string[];
-}
-
-interface CorrelationResult {
-  target: string;
-  variavel: string;
-  janela: number;
-  shift: number;
-  spearman: number;
 }
 
 export default function PoluentesDoencas(): JSX.Element {
@@ -165,50 +143,6 @@ export default function PoluentesDoencas(): JSX.Element {
     });
   }, [internacoesPorDia, rio]);
 
-  // Função para calcular médias móveis
-  const calcularMediaMovel = useCallback((dados: number[], janela: number): number[] => {
-    const result: number[] = [];
-    for (let i = 0; i < dados.length; i++) {
-      const inicio = Math.max(0, i - janela + 1);
-      const slice = dados.slice(inicio, i + 1);
-      result.push(slice.reduce((a, b) => a + b, 0) / slice.length);
-    }
-    return result;
-  }, []);
-
-  // Calcular correlação
-  const calcularCorrelacao = useCallback((x: number[], y: number[], method: 'pearson' | 'spearman' = 'pearson') => {
-    if (x.length !== y.length || x.length < 2) return 0;
-    
-    if (method === 'spearman') {
-      const rankX = x.map((val, idx) => ({ val, idx }))
-        .sort((a, b) => a.val - b.val)
-        .map((item, rank) => ({ idx: item.idx, rank: rank + 1 }));
-      
-      const rankY = y.map((val, idx) => ({ val, idx }))
-        .sort((a, b) => a.val - b.val)
-        .map((item, rank) => ({ idx: item.idx, rank: rank + 1 }));
-      
-      const sortedRankX = rankX.sort((a, b) => a.idx - b.idx).map(r => r.rank);
-      const sortedRankY = rankY.sort((a, b) => a.idx - b.idx).map(r => r.rank);
-      
-      x = sortedRankX;
-      y = sortedRankY;
-    }
-    
-    const n = x.length;
-    const sumX = x.reduce((a, b) => a + b, 0);
-    const sumY = y.reduce((a, b) => a + b, 0);
-    const sumXY = x.reduce((sum, val, i) => sum + val * y[i], 0);
-    const sumX2 = x.reduce((sum, val) => sum + val * val, 0);
-    const sumY2 = y.reduce((sum, val) => sum + val * val, 0);
-    
-    const numerator = n * sumXY - sumX * sumY;
-    const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
-    
-    return denominator === 0 ? 0 : numerator / denominator;
-  }, []);
-
   // Buscar melhores combinações (janela + lag)
   const melhoresCombinacoes = useMemo(() => {
     const resultados: CorrelationResult[] = [];
@@ -224,7 +158,7 @@ export default function PoluentesDoencas(): JSX.Element {
       const valores = mergedData.map(d => (d as any)[pollutant] || NaN);
       
       janelas.forEach(janela => {
-        const mm = calcularMediaMovel(valores, janela);
+        const mm = calculateRollingAverage(valores.filter(v => !isNaN(v)), janela);
         
         shifts.forEach(shift => {
           // Correlação para D+1
@@ -233,10 +167,9 @@ export default function PoluentesDoencas(): JSX.Element {
           const minLength = Math.min(xD1.length, yD1.length);
           
           if (minLength >= 5) {
-            const corrD1 = calcularCorrelacao(
+            const corrD1 = spearmanCorrelation(
               xD1.slice(0, minLength),
-              yD1.slice(0, minLength),
-              'spearman'
+              yD1.slice(0, minLength)
             );
             
             if (!isNaN(corrD1)) {
@@ -256,10 +189,9 @@ export default function PoluentesDoencas(): JSX.Element {
           const minLengthD7 = Math.min(xD7.length, yD7.length);
           
           if (minLengthD7 >= 5) {
-            const corrD7 = calcularCorrelacao(
+            const corrD7 = spearmanCorrelation(
               xD7.slice(0, minLengthD7),
-              yD7.slice(0, minLengthD7),
-              'spearman'
+              yD7.slice(0, minLengthD7)
             );
             
             if (!isNaN(corrD7)) {
@@ -277,7 +209,7 @@ export default function PoluentesDoencas(): JSX.Element {
     });
     
     return resultados;
-  }, [mergedData, calcularMediaMovel, calcularCorrelacao]);
+  }, [mergedData]);
 
   // Agrupar melhores por variável
   const melhoresPorVariavel = useMemo(() => {
@@ -318,18 +250,6 @@ export default function PoluentesDoencas(): JSX.Element {
           4) Exploramos <strong>correlações</strong> (lag 0 e por defasagens).
         </p>
       </div>
-
-      {/* Estatísticas */}
-      {/* <div className="stats-box">
-        <p>
-          <strong>SUS:</strong> {sus.length.toLocaleString()} registros |{" "}
-          <strong>QualiAR tratado:</strong> {rio.length.toLocaleString()} registros
-        </p>
-        <p>
-          <strong>Após filtros:</strong> {filteredSusData.length.toLocaleString()} registros SUS |{" "}
-          <strong>Dias com dados:</strong> {mergedData.length}
-        </p>
-      </div> */}
 
       {/* Gráfico PM2.5 */}
       <div className="chart-section">

@@ -5,6 +5,7 @@ import "./EstacoesPage.css";
 import { parseDateFlexible } from "../../utils/date";
 import { toNumberOrNaN, uniq, groupBy } from "../../utils/data";
 import { percentile, median, rollingMean} from "../../utils/math";
+import { CsvExportButton } from '../../components/common/CsvExportButton';
 import {
   MapIcon,
   InfoIcon,
@@ -13,29 +14,14 @@ import {
   CalendarIcon,
   CorrelationIcon,
   TestIcon,
-  DownloadIcon,
   FilterIcon
 } from '../../components/Icons';
 
-// -------------------------------------------------
-// Config
-// -------------------------------------------------
 const DATA_URL =
   "https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/main/data/DataRio/Estacoes_Tratadas_Por_Dia/ESTACOES_UNIFICADAS_POR_DIA.csv";
 
 const NUM_COLS_POSSIVEIS = [
-  "temp",
-  "ur",
-  "chuva",
-  "co",
-  "no",
-  "no2",
-  "nox",
-  "so2",
-  "o3",
-  "pm10",
-  "pm2_5",
-  "AQI",
+  "temp","ur","chuva","co","no","no2","nox","so2","o3","pm10","pm2_5","AQI",
 ];
 
 // -------------------------------------------------
@@ -491,30 +477,6 @@ export default function EstacoesPage(): JSX.Element {
     return { data, layout };
   }, [filtered, numericCols]);
 
-  // -------------------
-  // Exportação CSV (dados filtrados)
-  // -------------------
-  const onExport = () => {
-    const csv = Papa.unparse(
-      filtered.map((r) => ({
-        ...r,
-        data_dia: r.data_dia instanceof Date ? r.data_dia.toISOString().slice(0, 10) : "",
-      }))
-    );
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "estacoes_filtrado.csv";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  // -------------------
-  // Render
-  // -------------------
   return (
     <div className="estacoes-container">
       <h1 className="estacoes-title">
@@ -809,15 +771,20 @@ export default function EstacoesPage(): JSX.Element {
           </section>
 
           {/* Exportar */}
-          <section className="export-section">
-            <h2 className="section-title">
-              <DownloadIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-              Exportar dados filtrados
-            </h2>
-            <button onClick={onExport} className="export-button">
-              Baixar CSV filtrado
-            </button>
-          </section>
+          <CsvExportButton
+            data={filtered}
+            filename="estacoes_filtrado"
+            label="Exportar dados filtrados"
+            buttonText="Baixar CSV"
+            iconSize={24}
+            iconColor="#38a169"
+            transformData={(data) => 
+              data.map(r => ({
+                ...r,
+                data_dia: r.data_dia instanceof Date ? r.data_dia.toISOString().slice(0, 10) : ""
+              }))
+            }
+          />
         </>
       )}
     </div>
