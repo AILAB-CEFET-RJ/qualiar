@@ -21,16 +21,12 @@ import {
   FilterIcon,
   StatsIcon,
   TrendIcon,
-  HeatmapIcon,
   CalendarIcon,
   CorrelationIcon,
   ScatterIcon,
   TestIcon,
   ExtremeIcon,
-  DownloadIcon,
-  InfoIcon,
-  PollutionIcon,
-  WeatherIcon
+  DownloadIcon
 } from '../../components/Icons';
 
 export default function AnaliseRio() {
@@ -225,7 +221,7 @@ export default function AnaliseRio() {
       {aqiTimeSeries && (
         <div className="section-rio">
           <h2 className="section-title-rio">
-            <PollutionIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+            <StatsIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
             Série temporal do AQI diário (com faixas de qualidade)
           </h2>
           <div className="chart-container-rio" style={{ height: '500px' }}>

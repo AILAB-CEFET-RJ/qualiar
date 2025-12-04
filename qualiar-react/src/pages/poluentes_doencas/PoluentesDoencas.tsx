@@ -6,6 +6,14 @@ import {
   loadRioDeJaneiroQualiarTreatedData 
 } from "../../services/dataLoader";
 import "./PoluentesDoencas.css"; // Importando o arquivo CSS
+import {
+  TrendIcon,
+  InfoIcon,
+  StatsIcon,
+  TableIcon,
+  PollutionIcon,
+  CorrelationIcon
+} from '../../components/Icons';
 
 // Tipos para os dados
 interface RioData {
@@ -291,10 +299,16 @@ export default function PoluentesDoencas(): JSX.Element {
 
   return (
     <div className="poluentes-container">
-      <h1 className="main-title">📈 Poluentes x Doenças Respiratórias — Rio de Janeiro</h1>
+      <h1 className="main-title">
+        <TrendIcon style={{ marginRight: '10px', verticalAlign: 'middle' }} />
+        Poluentes x Doenças Respiratórias — Rio de Janeiro
+      </h1>
       
       <div className="info-box">
-        <h2 className="section-title">ℹ️ Sobre esta página</h2>
+        <h2 className="section-title">
+          <InfoIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+          Sobre esta página
+        </h2>
         <p className="info-text">
           Cruzamos <strong>internações por doenças respiratórias (SUS)</strong> com <strong>variáveis ambientais (QualiAR)</strong>.
           <br />
@@ -306,7 +320,7 @@ export default function PoluentesDoencas(): JSX.Element {
       </div>
 
       {/* Estatísticas */}
-      <div className="stats-box">
+      {/* <div className="stats-box">
         <p>
           <strong>SUS:</strong> {sus.length.toLocaleString()} registros |{" "}
           <strong>QualiAR tratado:</strong> {rio.length.toLocaleString()} registros
@@ -315,11 +329,14 @@ export default function PoluentesDoencas(): JSX.Element {
           <strong>Após filtros:</strong> {filteredSusData.length.toLocaleString()} registros SUS |{" "}
           <strong>Dias com dados:</strong> {mergedData.length}
         </p>
-      </div>
+      </div> */}
 
       {/* Gráfico PM2.5 */}
       <div className="chart-section">
-        <h2 className="section-title">PM2.5 Mensal</h2>
+        <h2 className="section-title">
+          <PollutionIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+          PM2.5 Mensal
+        </h2>
         <Plot
           data={[
             {
@@ -353,7 +370,10 @@ export default function PoluentesDoencas(): JSX.Element {
       {/* Série Temporal */}
       {mergedData.length > 0 && (
         <div className="chart-section">
-          <h2 className="section-title">📈 Série Temporal: Internações x Variáveis Ambientais</h2>
+          <h2 className="section-title">
+            <StatsIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+            Série Temporal: Internações x Variáveis Ambientais
+          </h2>
           <Plot
             data={[
               {
@@ -402,7 +422,10 @@ export default function PoluentesDoencas(): JSX.Element {
       {/* Correlações */}
       {melhoresPorVariavel.length > 0 && (
         <div className="chart-section">
-          <h2 className="section-title">📊 Melhores Correlações (Janela + Lag)</h2>
+          <h2 className="section-title">
+            <CorrelationIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+            Melhores Correlações (Janela + Lag)
+          </h2>
           
           {['internacoes_d1', 'internacoes_d7'].map(target => {
             const dadosTarget = melhoresPorVariavel.filter(d => d.target === target);
@@ -455,7 +478,10 @@ export default function PoluentesDoencas(): JSX.Element {
       {/* Tabela de melhores combinações */}
       {melhoresPorVariavel.length > 0 && (
         <div className="table-section">
-          <h2 className="section-title">📋 Tabela — Melhores Combinações por Variável</h2>
+          <h2 className="section-title">
+            <TableIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+            Tabela — Melhores Combinações por Variável
+          </h2>
           <div className="table-container">
             <table className="data-table">
               <thead>

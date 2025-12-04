@@ -13,6 +13,17 @@ import { DateRangePicker } from "../../components/common/DateRangePicker";
 import { MONTH_LABELS } from "../../utils/constants";
 import { formatNumber, formatPercent } from "../../utils/formatters";
 import "./DadosSaude.css";
+import {
+  InfoIcon,
+  StatsIcon,
+  FilterIcon,
+  HospitalIcon,
+  PessoaIcon,
+  WarningIcon,
+  ClockIcon,
+  CalendarIcon
+} from '../../components/Icons';
+
 
 export default function DadosSaudeAvancado() {
   // Carregar dados
@@ -45,8 +56,16 @@ export default function DadosSaudeAvancado() {
     }
   }, [allData, dateRange]);
 
+  function sortAgeRanges(ranges: string[]): string[] {
+    const getStart = (str: string) =>
+      parseInt(str.replace('+', '').split('-')[0]);
+
+    return ranges.sort((a, b) => getStart(a) - getStart(b));
+  }
+
   // Opções de filtro
   const filterOptions = useSusFilterOptions(allData);
+  filterOptions.faixaEtaria = sortAgeRanges(filterOptions.faixaEtaria);
 
   // Dados filtrados
   const filteredData = useFilteredSusData(allData, {
@@ -86,20 +105,25 @@ export default function DadosSaudeAvancado() {
 
   return (
     <div className="dados-saude-container">
-      <h1 className="dados-saude-title">🩺 SIH/SUS — Internações Respiratórias (RJ) - Versão Avançada</h1>
+      <h1 className="dados-saude-title">
+        <HospitalIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+        SIH/SUS — Internações Respiratórias
+      </h1>
 
       {/* Filtros Avançados */}
       <div className="filtros-container">
-        <h3>🔎 Filtros Principais</h3>
+        <h3>
+          <FilterIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+          Filtros Principais
+        </h3>
         <div className="filtros-grid">
-          {/* Date Range Picker */}
-          <DateRangePicker
-            label="Período"
-            dateRange={dateRange}
-            onChange={setDateRange}
-          />
-
-          {/* Filtro por Ano */}
+          <div className="span-2">
+            <DateRangePicker
+              label="Período"
+              dateRange={dateRange}
+              onChange={setDateRange}
+            />
+          </div>
           {filterOptions.anos.length > 0 && (
             <SimpleMultiSelect
               label="Ano"
@@ -109,8 +133,6 @@ export default function DadosSaudeAvancado() {
               size={5}
             />
           )}
-
-          {/* Filtro por Sexo */}
           {filterOptions.sexo.length > 0 && (
             <SimpleMultiSelect
               label="Sexo"
@@ -120,8 +142,6 @@ export default function DadosSaudeAvancado() {
               size={4}
             />
           )}
-
-          {/* Filtro por Faixa Etária */}
           {filterOptions.faixaEtaria.length > 0 && (
             <SimpleMultiSelect
               label="Faixa Etária"
@@ -131,8 +151,6 @@ export default function DadosSaudeAvancado() {
               size={5}
             />
           )}
-
-          {/* Filtro por Grupo de Diagnóstico */}
           {filterOptions.grupos.length > 0 && (
             <SimpleMultiSelect
               label="Grupo CID-10"
@@ -145,30 +163,38 @@ export default function DadosSaudeAvancado() {
         </div>
       </div>
 
+
       {/* Métricas Completas */}
       {metrics && (
         <div className="section">
-          <h2 className="section-title">📊 Visão Geral</h2>
+          <h2 className="section-title">
+            <StatsIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+            Visão Geral
+          </h2>
           <div className="metricas-grid">
             <MetricCard 
               value={metrics.totalInternacoes.toLocaleString('pt-BR')} 
               label="Total de Internações"
-              icon="🏥"
+              icon={<HospitalIcon size={30} color="#3182ce" />}
+              subLabel="Contagem total"
             />
             <MetricCard 
               value={formatNumber(metrics.mediaIdade)} 
               label="Idade Média"
-              icon="👤"
+              icon={<PessoaIcon size={30} color="#38a169" />}
+              subLabel="Em anos"
             />
             <MetricCard 
               value={formatPercent(metrics.taxaMortalidade)} 
               label="Taxa de Mortalidade"
-              icon="⚰️"
+              icon={<WarningIcon size={30} color="#e53e3e" />}
+              subLabel="Porcentagem"
             />
             <MetricCard 
               value={formatNumber(metrics.mediaPermanencia)} 
-              label="Permanência Média (dias)"
-              icon="⏱️"
+              label="Permanência Média"
+              icon={<ClockIcon size={30} color="#d69e2e" />}
+              subLabel="Em dias"
             />
           </div>
           <div className="contador-registros">
@@ -180,7 +206,10 @@ export default function DadosSaudeAvancado() {
       {/* Série Temporal Avançada */}
       {timeSeriesData && timeSeriesData.dates.length > 0 && (
         <div className="section">
-          <h2 className="section-title">⏱️ Série Temporal de Internações</h2>
+          <h2 className="section-title">
+            <StatsIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+            Série Temporal de Internações
+          </h2>
           <div className="config-group">
             <label className="config-checkbox">
               <input
@@ -275,7 +304,10 @@ export default function DadosSaudeAvancado() {
       {/* Heatmaps de Sazonalidade */}
       {heatmapData && heatmapData.data.length > 0 && (
         <div className="section">
-          <h2 className="section-title">🔥 Sazonalidade (Ano x Mês)</h2>
+          <h2 className="section-title">
+            <CalendarIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+            Sazonalidade (Ano x Mês)
+          </h2>
           <div className="config-group">
             <label className="config-checkbox">
               <input
@@ -342,7 +374,10 @@ export default function DadosSaudeAvancado() {
       {/* Distribuição por Sexo */}
       {sexDistributionData && (
         <div className="section">
-          <h2 className="section-title">👥 Distribuição por Sexo</h2>
+          <h2 className="section-title">
+            <PessoaIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+            Distribuição por Sexo
+          </h2>
           <div className="distribution-grid">
             <div className="chart-container">
               <Plot

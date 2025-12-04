@@ -54,15 +54,12 @@
 
 /* Filtros */
 .filters-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  align-items: end;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
   padding: 20px;
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #4299e1;
 }
 
 .filter-group {
@@ -360,4 +357,27 @@
   .map-container {
     height: 400px;
   }
+}
+
+.filtros-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #2d3748;
+}
+
+/* No AnaliseRio.css, EstacoesPage.css e PoluentesDoencas.css */
+.icon-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Ajuste para ícones dentro de títulos */
+.section-title svg,
+.main-title svg,
+.section-title-rio svg,
+.filtros-title svg {
+  color: #4299e1; /* Cor azul para combinar */
+  font-size: 0.9em;
 }

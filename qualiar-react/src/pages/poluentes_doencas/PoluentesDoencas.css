@@ -171,3 +171,17 @@
     padding: 8px 12px;
   }
 }
+
+  .icon-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title svg,
+  .main-title svg,
+  .section-title-rio svg,
+  .filtros-title svg {
+    color: #4299e1;
+    font-size: 0.9em;
+  }

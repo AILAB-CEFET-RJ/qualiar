@@ -25,38 +25,10 @@ import {
   FaHospital,
   FaLungs,
   FaCloudSun,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaUser,
+  FaClock
 } from 'react-icons/fa';
-
-// Re-exportar todos os ícones
-export {
-  FaCity,
-  FaFilter,
-  FaChartBar,
-  FaChartLine,
-  FaFire,
-  FaCalendarAlt,
-  FaLink,
-  FaArrowsAltH,
-  FaFlask,
-  FaFlag,
-  FaDownload,
-  FaInfoCircle,
-  FaChartPie,
-  FaThermometerHalf,
-  FaTint,
-  FaWind,
-  FaCloudRain,
-  FaSmog,
-  FaMapMarkerAlt,
-  FaTable,
-  FaCogs,
-  FaSearch,
-  FaHospital,
-  FaLungs,
-  FaCloudSun,
-  FaExclamationTriangle
-};
 
 // Ou criar componentes específicos para seu app
 export const RioIcon = FaCity;
@@ -85,3 +57,5 @@ export const HospitalIcon = FaHospital;
 export const LungsIcon = FaLungs;
 export const WeatherIcon = FaCloudSun;
 export const WarningIcon = FaExclamationTriangle;
+export const PessoaIcon = FaUser;
+export const ClockIcon =   FaClock;

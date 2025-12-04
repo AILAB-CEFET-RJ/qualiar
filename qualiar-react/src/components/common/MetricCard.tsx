@@ -1,11 +1,14 @@
 import React from "react";
+import "./MetricCard.css"; // Vamos criar este CSS
 
 interface MetricCardProps {
   value: string | number;
   label: string;
   subLabel?: string;
-  icon?: string;
+  icon?: React.ReactNode | string; // Aceita ReactNode (seus ícones) ou string (emoji)
   color?: string;
+  iconSize?: number;
+  iconColor?: string;
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({
@@ -13,22 +16,39 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   label,
   subLabel,
   icon,
-  color = '#f8f9fa'
+  color = '#f8f9fa',
+  iconSize = 24,
+  iconColor = '#4299e1'
 }) => {
-  return (
-    <div style={{ 
-      padding: 16, 
-      backgroundColor: color, 
-      borderRadius: 8, 
-      textAlign: 'center' 
-    }}>
-      {icon && <div style={{ fontSize: '1.5em', marginBottom: 8 }}>{icon}</div>}
-      <div style={{ fontSize: '2em', fontWeight: 'bold' }}>{value}</div>
-      <div>{label}</div>
-      {subLabel && (
-        <div style={{ fontSize: '0.8em', color: '#666', marginTop: 4 }}>
-          {subLabel}
+  // Função para renderizar o ícone corretamente
+  const renderIcon = () => {
+    if (!icon) return null;
+    
+    if (typeof icon === 'string') {
+      // Se for string (emoji), renderiza como antes
+      return <div className="metric-icon-emoji">{icon}</div>;
+    } else {
+      // Se for ReactNode (componente React Icon)
+      return (
+        <div className="metric-react-icon">
+          {React.isValidElement(icon) 
+            ? React.cloneElement(icon as React.ReactElement<any>, {
+                size: iconSize,
+                color: iconColor
+              })
+            : icon}
         </div>
+      );
+    }
+  };
+
+  return (
+    <div className="metric-card" style={{ backgroundColor: color }}>
+      {renderIcon()}
+      <div className="metric-value">{value}</div>
+      <div className="metric-label">{label}</div>
+      {subLabel && (
+        <div className="metric-sub-label">{subLabel}</div>
       )}
     </div>
   );

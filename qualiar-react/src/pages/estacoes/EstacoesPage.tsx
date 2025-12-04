@@ -517,10 +517,16 @@ export default function EstacoesPage(): JSX.Element {
   // -------------------
   return (
     <div className="estacoes-container">
-      <h1 className="estacoes-title">🗺️ Estações de Monitoramento — EDA</h1>
+      <h1 className="estacoes-title">
+        <MapIcon style={{ marginRight: '10px', verticalAlign: 'middle' }} />
+        Estações de Monitoramento — EDA
+      </h1>
 
       <details className="info-summary">
-        <summary>ℹ️ Sobre os dados</summary>
+        <summary>
+          <InfoIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+          Sobre os dados
+        </summary>
         <div className="info-content">
           <p>
             Colunas comuns: <b>nome_estacao</b>, <b>lat</b>, <b>lon</b>, <b>data_dia</b>, <b>ano</b>, <b>mes</b>, e variáveis
@@ -534,6 +540,10 @@ export default function EstacoesPage(): JSX.Element {
 
       {/* Filtros */}
       <section className="filters-section">
+        <h3 className="filtros-title">
+          <FilterIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+          Filtro (global da página)
+        </h3>
         <div className="filter-group">
           <label className="filter-label">Período — início</label>
           <input 
@@ -605,7 +615,10 @@ export default function EstacoesPage(): JSX.Element {
         <>
           {/* MAPA */}
           <section className="section">
-            <h2 className="section-title">🗺️ Mapa das Estações (RJ) — cor e tamanho por variável</h2>
+            <h2 className="section-title">
+              <MapIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              Mapa das Estações (RJ) — cor e tamanho por variável
+            </h2>
             <div className="map-controls">
               {/* ... controles do mapa ... */}
             </div>
@@ -651,7 +664,10 @@ export default function EstacoesPage(): JSX.Element {
 
           {/* TENDÊNCIAS */}
           <section className="section">
-            <h2 className="section-title">📈 Tendências diárias por estação (MM30)</h2>
+            <h2 className="section-title">
+              <TrendIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              Tendências diárias por estação (MM30)
+            </h2>
             <div className="trend-controls">
               <label className="filter-label">Variáveis (normalizadas por estação+variável)</label>
               <select
@@ -686,7 +702,10 @@ export default function EstacoesPage(): JSX.Element {
 
           {/* BOX por estação */}
           <section className="section">
-            <h2 className="section-title">🏷️ Comparação por Estação (Boxplots)</h2>
+            <h2 className="section-title">
+              <StatsIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              Comparação por Estação (Boxplots)
+            </h2>
             <div className="box-controls">
               <label className="filter-label">Variável</label>
               <select 
@@ -719,7 +738,10 @@ export default function EstacoesPage(): JSX.Element {
 
           {/* Sazonalidade mensal */}
           <section className="section">
-            <h2 className="section-title">📅 Sazonalidade Mensal (Boxplot por Mês)</h2>
+            <h2 className="section-title">
+              <CalendarIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              Sazonalidade Mensal (Boxplot por Mês)
+            </h2>
             <div className="box-controls">
               <label className="filter-label">Variável</label>
               <select 
@@ -748,7 +770,10 @@ export default function EstacoesPage(): JSX.Element {
 
           {/* Correlação */}
           <section className="section">
-            <h2 className="section-title">🔗 Correlação entre Variáveis</h2>
+            <h2 className="section-title">
+              <CorrelationIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              Correlação entre Variáveis
+            </h2>
             {corrFig ? (
               <div className="chart-wrapper" style={{ height: '600px' }}>
                 <Plot 
@@ -767,7 +792,10 @@ export default function EstacoesPage(): JSX.Element {
 
           {/* Completude */}
           <section className="section">
-            <h2 className="section-title">🧪 Completude por Variável (não nulos %)</h2>
+            <h2 className="section-title">
+              <TestIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              Completude por Variável (não nulos %)
+            </h2>
             {completenessFig && (
               <div className="chart-wrapper" style={{ height: '500px' }}>
                 <Plot 
@@ -782,7 +810,10 @@ export default function EstacoesPage(): JSX.Element {
 
           {/* Exportar */}
           <section className="export-section">
-            <h2 className="section-title">⬇️ Exportar dados filtrados</h2>
+            <h2 className="section-title">
+              <DownloadIcon style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+              Exportar dados filtrados
+            </h2>
             <button onClick={onExport} className="export-button">
               Baixar CSV filtrado
             </button>
