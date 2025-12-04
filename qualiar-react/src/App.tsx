@@ -1,9 +1,9 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Sidebar from "./components/layout/Sidebar";
-import EstacoesPage from "./pages/EstacoesPage";
-import AnaliseRio from "./pages/AnaliseRio";
-import DadosSaude from "./pages/DadosSaude";
-import PoluentesDoencas from "./pages/PoluentesDoencas";
+import EstacoesPage from "./pages/estacoes/EstacoesPage";
+import AnaliseRio from "./pages/rio/AnaliseRio";
+import DadosSaude from "./pages/sus/DadosSaude";
+import PoluentesDoencas from "./pages/poluentes_doencas/PoluentesDoencas";
 import type { JSX } from "react";
 
 export default function App(): JSX.Element {

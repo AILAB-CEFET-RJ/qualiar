@@ -1,25 +1,17 @@
 import React, { useState } from "react";
 import Plot from "react-plotly.js";
-
-// Hooks personalizados
-import { useSusData, useSusFilterOptions, useFilteredSusData } from "../hooks/useSusData";
+import { useSusData, useSusFilterOptions, useFilteredSusData } from "../../hooks/useSusData";
 import { 
   useSusMetrics, 
   useSusTimeSeries, 
   useSusSexDistribution, 
   useSusHeatmapData 
-} from "../hooks/useSusStats";
-
-// Componentes
-import { MetricCard } from "../components/common/MetricCard";
-import { SimpleMultiSelect } from "../components/common/SimpleMultiSelect";
-import { DateRangePicker } from "../components/common/DateRangePicker";
-
-// Utilitários
-import { MONTH_LABELS } from "../utils/constants";
-import { formatNumber, formatPercent } from "../utils/formatters";
-
-// Estilos
+} from "../../hooks/useSusStats";
+import { MetricCard } from "../../components/common/MetricCard";
+import { SimpleMultiSelect } from "../../components/common/SimpleMultiSelect";
+import { DateRangePicker } from "../../components/common/DateRangePicker";
+import { MONTH_LABELS } from "../../utils/constants";
+import { formatNumber, formatPercent } from "../../utils/formatters";
 import "./DadosSaude.css";
 
 export default function DadosSaudeAvancado() {

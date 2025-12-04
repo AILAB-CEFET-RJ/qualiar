@@ -4,7 +4,7 @@ import Plot from "react-plotly.js";
 import { 
   loadSUSData, 
   loadRioDeJaneiroQualiarTreatedData 
-} from "../services/dataLoader";
+} from "../../services/dataLoader";
 import "./PoluentesDoencas.css"; // Importando o arquivo CSS
 
 // Tipos para os dados

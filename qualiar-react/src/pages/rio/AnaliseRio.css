@@ -1,0 +1,370 @@
+/* AnaliseRio.css */
+
+/* Estilos gerais do container */
+.analise-rio-container {
+  padding: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background-color: #f8fafc;
+  min-height: 100vh;
+}
+
+.analise-rio-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #2d3748;
+}
+
+/* Filtros */
+.filtros-container {
+  margin-bottom: 32px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #4299e1;
+}
+
+.filtros-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: #2d3748;
+}
+
+.filtros-grid {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filtro-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+}
+
+.filtro-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #4a5568;
+  font-size: 0.9em;
+}
+
+.filtro-input {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s;
+  background-color: white;
+}
+
+.filtro-input:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+.filtro-select {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 14px;
+  background-color: white;
+  transition: border-color 0.2s;
+  min-width: 200px;
+}
+
+.filtro-select:focus {
+  outline: none;
+  border-color: #4299e1;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+/* Métricas */
+.metricas-container {
+  margin-bottom: 32px;
+}
+
+.metricas-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #2d3748;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.metricas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.metrica-card {
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: white;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.metrica-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+.metrica-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2d3748;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.metrica-label {
+  color: #718096;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.metrica-sub-label {
+  color: #a0aec0;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* Seções de gráficos */
+.section-rio {
+  margin-bottom: 32px;
+  padding: 24px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.section-title-rio {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #2d3748;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+/* Controles de gráficos */
+.controles-container {
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: #f7fafc;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.controle-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+}
+
+.controle-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #4a5568;
+  font-size: 0.9em;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox-container input[type="checkbox"] {
+  margin: 0;
+}
+
+.checkbox-label {
+  font-size: 14px;
+  color: #4a5568;
+}
+
+/* Contêiner de gráficos */
+.chart-container-rio {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background-color: white;
+}
+
+.chart-container-rio .plotly {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Tabela de dias extremos */
+.tabela-extremos {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.tabela-extremos thead {
+  background-color: #f7fafc;
+}
+
+.tabela-extremos th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #4a5568;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.tabela-extremos td {
+  padding: 10px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #4a5568;
+}
+
+.tabela-extremos tr:hover {
+  background-color: #f7fafc;
+}
+
+.tabela-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  margin-top: 16px;
+}
+
+/* Botões */
+.botao-exportar {
+  padding: 12px 24px;
+  background-color: #38a169;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.botao-exportar:hover {
+  background-color: #2f855a;
+}
+
+.botao-exportar:active {
+  background-color: #276749;
+  transform: scale(0.98);
+}
+
+/* Informações auxiliares */
+.info-auxiliar {
+  font-size: 0.9em;
+  color: #718096;
+  margin-top: 8px;
+  font-style: italic;
+}
+
+/* Estado de carregamento/erro */
+.loading-state-rio {
+  margin: 32px 0;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  color: #4a5568;
+  font-size: 16px;
+  padding: 20px;
+  background-color: white;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.error-state-rio {
+  margin: 24px 0;
+  color: #c53030;
+  padding: 16px;
+  border: 1px solid #fc8181;
+  border-radius: 8px;
+  background-color: #fff5f5;
+  font-weight: 500;
+}
+
+.spinner-rio {
+  width: 20px;
+  height: 20px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #4299e1;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .analise-rio-container {
+    padding: 16px;
+  }
+  
+  .filtros-grid {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filtro-group,
+  .controle-item {
+    min-width: 100%;
+  }
+  
+  .metricas-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .section-rio {
+    padding: 16px;
+  }
+  
+  .controles-container {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .analise-rio-title {
+    font-size: 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tabela-container {
+    max-height: 300px;
+  }
+  
+  .chart-container-rio {
+    height: 400px !important;
+  }
+}

@@ -1,6 +1,21 @@
 import { type JSX, useEffect, useMemo, useState } from "react";
 import Plot from "react-plotly.js";
 import Papa from "papaparse";
+import "./EstacoesPage.css";
+import { parseDateFlexible } from "../../utils/date";
+import { toNumberOrNaN, uniq, groupBy } from "../../utils/data";
+import { percentile, median, rollingMean} from "../../utils/math";
+import {
+  MapIcon,
+  InfoIcon,
+  StatsIcon,
+  TrendIcon,
+  CalendarIcon,
+  CorrelationIcon,
+  TestIcon,
+  DownloadIcon,
+  FilterIcon
+} from '../../components/Icons';
 
 // -------------------------------------------------
 // Config
@@ -26,81 +41,6 @@ const NUM_COLS_POSSIVEIS = [
 // -------------------------------------------------
 // Utilitários
 // -------------------------------------------------
-function parseDateFlexible(raw: any): Date | null {
-  if (raw instanceof Date) return isNaN(raw as any) ? null : raw;
-  if (typeof raw !== "string") return null;
-  // Tenta ISO
-  const iso = new Date(raw);
-  if (!isNaN(iso.getTime())) return iso;
-  // Tenta DD/MM/YYYY
-  const m = raw.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})$/);
-  if (m) {
-    const [, d, mo, y] = m;
-    const year = y.length === 2 ? Number("20" + y) : Number(y);
-    const dt = new Date(year, Number(mo) - 1, Number(d));
-    return isNaN(dt.getTime()) ? null : dt;
-  }
-  return null;
-}
-
-const uniq = <T,>(arr: T[]) => Array.from(new Set(arr));
-
-function toNumberOrNaN(v: any): number {
-  if (v === null || v === undefined || v === "") return NaN;
-  const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
-  return Number.isFinite(n) ? n : NaN;
-}
-
-function groupBy<T, K extends string | number>(arr: T[], keyFn: (t: T) => K) {
-  const m = new Map<K, T[]>();
-  for (const item of arr) {
-    const k = keyFn(item);
-    const g = m.get(k);
-    if (g) g.push(item);
-    else m.set(k, [item]);
-  }
-  return m;
-}
-
-function percentile(values: number[], p: number) {
-  const v = values.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
-  if (v.length === 0) return NaN;
-  const idx = (p / 100) * (v.length - 1);
-  const lo = Math.floor(idx);
-  const hi = Math.ceil(idx);
-  if (lo === hi) return v[lo];
-  return v[lo] + (v[hi] - v[lo]) * (idx - lo);
-}
-
-function median(values: number[]) {
-  return percentile(values, 50);
-}
-
-function rollingMean(values: (number | null)[], window: number) {
-  const out: (number | null)[] = new Array(values.length).fill(null);
-  let sum = 0;
-  let count = 0;
-  const q: number[] = []; // guarda valores válidos
-  for (let i = 0; i < values.length; i++) {
-    const val = values[i];
-    if (Number.isFinite(val as number)) {
-      q.push(val as number);
-      sum += val as number;
-      count += 1;
-    } else {
-      q.push(NaN);
-    }
-    if (q.length > window) {
-      const removed = q.shift();
-      if (Number.isFinite(removed)) {
-        sum -= removed as number;
-        count -= 1;
-      }
-    }
-    out[i] = count > 0 ? sum / count : null;
-  }
-  return out;
-}
 
 function minMaxNormalize(values: (number | null)[]) {
   const finite = values.filter((v) => Number.isFinite(v as number)) as number[];
@@ -447,22 +387,46 @@ export default function EstacoesPage(): JSX.Element {
   // -------------------
   const monthlyBox = useMemo(() => {
     if (!monthVar) return null;
-    const rows = filtered.filter((r) => Number.isFinite(r[monthVar]) && Number.isFinite(r["mes"]) );
+    
+    const rows = filtered.filter((r) => {
+      const valor = toNumberOrNaN(r[monthVar]);
+      const mesNum = Number(r["mes"]);
+      
+      return Number.isFinite(valor) && mesNum >= 1 && mesNum <= 12;
+    });
+    
+    if (rows.length === 0) return null;
+    
     const byMonth = groupBy(rows, (r) => Number(r["mes"]) as number);
-    const order = [1,2,3,4,5,6,7,8,9,10,11,12];
-    const monthLabels = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    
+    const order = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const monthLabels = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-    const data: any[] = order.map((m, i) => ({
-      y: (byMonth.get(m) || []).map((r) => r[monthVar!]),
-      name: monthLabels[i],
-      type: "box",
-    }));
+    const data: any[] = order.map((m, i) => {
+      const monthData = byMonth.get(m) || [];
+      const valores = monthData.map((r) => {
+        const val = toNumberOrNaN(r[monthVar!]);
+        return Number.isFinite(val) ? val : null;
+      }).filter((v): v is number => v !== null); // Filtrar apenas números válidos
+      
+      return {
+        y: valores,
+        name: monthLabels[i],
+        type: "box",
+        boxpoints: "outliers",
+      };
+    });
 
     const layout: any = {
-      title: `${monthVar} — sazonalidade por mês`,
+      title: `${monthVar} — sazonalidade por mês (${rows.length} registros)`,
       margin: { l: 40, r: 20, t: 40, b: 40 },
       yaxis: { title: monthVar },
       showlegend: false,
+      xaxis: {
+        title: "Mês",
+        tickvals: monthLabels,
+        ticktext: monthLabels
+      }
     };
     return { data, layout };
   }, [filtered, monthVar]);
@@ -552,43 +516,53 @@ export default function EstacoesPage(): JSX.Element {
   // Render
   // -------------------
   return (
-    <div style={{ padding: 16, maxWidth: 1300, margin: "0 auto", fontFamily: "Inter, system-ui, Arial" }}>
-      <h1 style={{ fontSize: 28, marginBottom: 8 }}>🗺️ Estações de Monitoramento — EDA</h1>
+    <div className="estacoes-container">
+      <h1 className="estacoes-title">🗺️ Estações de Monitoramento — EDA</h1>
 
-      <details style={{ marginBottom: 16 }}>
-        <summary style={{ cursor: "pointer", fontWeight: 600 }}>ℹ️ Sobre os dados</summary>
-        <div style={{ paddingTop: 8, color: "#333" }}>
+      <details className="info-summary">
+        <summary>ℹ️ Sobre os dados</summary>
+        <div className="info-content">
           <p>
             Colunas comuns: <b>nome_estacao</b>, <b>lat</b>, <b>lon</b>, <b>data_dia</b>, <b>ano</b>, <b>mes</b>, e variáveis
             como {NUM_COLS_POSSIVEIS.filter((c) => numericCols.includes(c)).join(", ") || "(nenhuma detectada)"}.
           </p>
           <p>
-            Fonte: <code>ESTACOES_UNIFICADAS_POR_DIA.csv</code> (GitHub / AILAB-CEFET-RJ).
+            Fonte: <code className="code">ESTACOES_UNIFICADAS_POR_DIA.csv</code> (GitHub / AILAB-CEFET-RJ).
           </p>
         </div>
       </details>
 
       {/* Filtros */}
-      <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, alignItems: "end" }}>
-        <div>
-          <label style={{ display: "block", fontWeight: 600 }}>Período — início</label>
-          <input type="date" value={dateFrom || ""} onChange={(e) => setDateFrom(e.target.value)} />
+      <section className="filters-section">
+        <div className="filter-group">
+          <label className="filter-label">Período — início</label>
+          <input 
+            type="date" 
+            className="filter-input"
+            value={dateFrom || ""} 
+            onChange={(e) => setDateFrom(e.target.value)} 
+          />
         </div>
-        <div>
-          <label style={{ display: "block", fontWeight: 600 }}>Período — fim</label>
-          <input type="date" value={dateTo || ""} onChange={(e) => setDateTo(e.target.value)} />
+        <div className="filter-group">
+          <label className="filter-label">Período — fim</label>
+          <input 
+            type="date" 
+            className="filter-input"
+            value={dateTo || ""} 
+            onChange={(e) => setDateTo(e.target.value)} 
+          />
         </div>
-        <div style={{ gridColumn: "1 / span 2" }}>
-          <label style={{ display: "block", fontWeight: 600 }}>Estações</label>
+        <div style={{ gridColumn: "1 / span 2" }} className="filter-group">
+          <label className="filter-label">Estações</label>
           <select
             multiple
+            className="filter-select"
             value={allSelected ? ["__ALL__", ...stationsSel] : stationsSel}
             onChange={(e) => {
               const values = Array.from(e.target.selectedOptions).map((o) => o.value);
               toggleStations(values);
             }}
             size={Math.min(12, Math.max(4, stations.length))}
-            style={{ width: "100%" }}
           >
             <option value="__ALL__">Todos</option>
             {stations.map((s) => (
@@ -601,28 +575,28 @@ export default function EstacoesPage(): JSX.Element {
       </section>
 
       {/* KPIs */}
-      <section style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 16 }}>
-        <div style={{ padding: 12, border: "1px solid #e5e7eb", borderRadius: 12 }}>
-          <div style={{ color: "#6b7280", fontSize: 12 }}>Registros (filtro)</div>
-          <div style={{ fontSize: 24, fontWeight: 700 }}>{kpi.n.toLocaleString("pt-BR")}</div>
+      <section className="kpi-section">
+        <div className="kpi-card">
+          <div className="kpi-label">Registros (filtro)</div>
+          <div className="kpi-value">{kpi.n.toLocaleString("pt-BR")}</div>
         </div>
-        <div style={{ padding: 12, border: "1px solid #e5e7eb", borderRadius: 12 }}>
-          <div style={{ color: "#6b7280", fontSize: 12 }}>Estações ativas</div>
-          <div style={{ fontSize: 24, fontWeight: 700 }}>{kpi.nStations.toLocaleString("pt-BR")}</div>
+        <div className="kpi-card">
+          <div className="kpi-label">Estações ativas</div>
+          <div className="kpi-value">{kpi.nStations.toLocaleString("pt-BR")}</div>
         </div>
-        <div style={{ padding: 12, border: "1px solid #e5e7eb", borderRadius: 12 }}>
-          <div style={{ color: "#6b7280", fontSize: 12 }}>Período</div>
-          <div style={{ fontSize: 16, fontWeight: 600 }}>{kpi.ptxt}</div>
+        <div className="kpi-card">
+          <div className="kpi-label">Período</div>
+          <div className="kpi-text">{kpi.ptxt}</div>
         </div>
       </section>
 
       {loading && (
-        <div style={{ marginTop: 24, display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="loading-state">
           <div className="spinner" /> Carregando dados...
         </div>
       )}
       {error && (
-        <div style={{ marginTop: 24, color: "#b91c1c" }}>
+        <div className="error-state">
           Erro ao carregar: <b>{error}</b>
         </div>
       )}
@@ -630,11 +604,63 @@ export default function EstacoesPage(): JSX.Element {
       {!loading && !error && (
         <>
           {/* MAPA */}
-          <h2 style={{ marginTop: 28, marginBottom: 8 }}>🗺️ Mapa das Estações (RJ) — cor e tamanho por variável</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, alignItems: "end" }}>
-            <div>
-              <label style={{ display: "block", fontWeight: 600 }}>Variável</label>
-              <select value={mapVar || ""} onChange={(e) => setMapVar(e.target.value)} style={{ width: "100%" }}>
+          <section className="section">
+            <h2 className="section-title">🗺️ Mapa das Estações (RJ) — cor e tamanho por variável</h2>
+            <div className="map-controls">
+              {/* ... controles do mapa ... */}
+            </div>
+            {mapData && mapData.rows.length > 0 ? (
+              <div className="map-container">
+                <Plot
+                  style={{ width: "100%", height: "100%" }}
+                  config={{ displayModeBar: true, responsive: true }}
+                  data={[
+                    {
+                      type: "scattermapbox",
+                      lat: mapData.rows.map((r) => r.lat),
+                      lon: mapData.rows.map((r) => r.lon),
+                      mode: "markers",
+                      text: mapData.rows.map((r) => r.nome_estacao),
+                      marker: {
+                        size: mapData.sizes,
+                        color: mapData.rows.map((r) => r.valor),
+                        colorscale: "Turbo",
+                        cmin: Math.min(...mapData.rows.map((r) => r.valor)),
+                        cmax: Math.max(...mapData.rows.map((r) => r.valor)),
+                        opacity: 0.9,
+                        showscale: true,
+                        colorbar: { title: mapVar || "valor" },
+                      },
+                      hovertemplate: `<b>%{text}</b><br>${mapVar} (${mapAgg}): %{marker.color:.2f}<extra></extra>`,
+                    } as any,
+                  ]}
+                  layout={{
+                    mapbox: { style: "open-street-map", center: { lat: mapData.centerLat, lon: mapData.centerLon }, zoom: 10 },
+                    margin: { l: 10, r: 10, t: 10, b: 10 },
+                    autosize: true,
+                  }}
+                  useResizeHandler
+                />
+              </div>
+            ) : (
+              <div className="no-data-message">
+                Sem valores válidos para a variável selecionada nas estações filtradas.
+              </div>
+            )}
+          </section>
+
+          {/* TENDÊNCIAS */}
+          <section className="section">
+            <h2 className="section-title">📈 Tendências diárias por estação (MM30)</h2>
+            <div className="trend-controls">
+              <label className="filter-label">Variáveis (normalizadas por estação+variável)</label>
+              <select
+                multiple
+                className="trend-select"
+                value={trendVars}
+                onChange={(e) => setTrendVars(Array.from(e.target.selectedOptions).map((o) => o.value))}
+                size={Math.min(10, Math.max(3, numericCols.length))}
+              >
                 {numericCols.map((c) => (
                   <option key={c} value={c}>
                     {c}
@@ -642,148 +668,127 @@ export default function EstacoesPage(): JSX.Element {
                 ))}
               </select>
             </div>
-            <div>
-              <label style={{ display: "block", fontWeight: 600 }}>Agregação</label>
-              <select value={mapAgg} onChange={(e) => setMapAgg(e.target.value as any)} style={{ width: "100%" }}>
-                <option>média</option>
-                <option>mediana</option>
-                <option>máximo</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ display: "block", fontWeight: 600 }}>Tamanho máx. do marcador</label>
-              <input
-                type="range"
-                min={16}
-                max={64}
-                step={2}
-                value={mapMaxSize}
-                onChange={(e) => setMapMaxSize(Number(e.target.value))}
-                style={{ width: "100%" }}
-              />
-            </div>
-          </div>
-          {mapData && mapData.rows.length > 0 ? (
-            <Plot
-              style={{ width: "100%", height: 540 }}
-              config={{ displayModeBar: true, responsive: true }}
-              data={[
-                {
-                  type: "scattermapbox",
-                  lat: mapData.rows.map((r) => r.lat),
-                  lon: mapData.rows.map((r) => r.lon),
-                  mode: "markers",
-                  text: mapData.rows.map((r) => r.nome_estacao),
-                  marker: {
-                    size: mapData.sizes,
-                    color: mapData.rows.map((r) => r.valor),
-                    colorscale: "Turbo",
-                    cmin: Math.min(...mapData.rows.map((r) => r.valor)),
-                    cmax: Math.max(...mapData.rows.map((r) => r.valor)),
-                    opacity: 0.9,
-                    showscale: true,
-                    colorbar: { title: mapVar || "valor" },
-                  },
-                  hovertemplate: `<b>%{text}</b><br>${mapVar} (${mapAgg}): %{marker.color:.2f}<extra></extra>`,
-                } as any,
-              ]}
-              layout={{
-                mapbox: { style: "open-street-map", center: { lat: mapData.centerLat, lon: mapData.centerLon }, zoom: 10 },
-                margin: { l: 10, r: 10, t: 10, b: 10 },
-              }}
-              useResizeHandler
-            />
-          ) : (
-            <div style={{ marginTop: 8 }}>Sem valores válidos para a variável selecionada nas estações filtradas.</div>
-          )}
-
-          {/* TENDÊNCIAS */}
-          <h2 style={{ marginTop: 28, marginBottom: 8 }}>📈 Tendências diárias por estação (MM30)</h2>
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ display: "block", fontWeight: 600 }}>Variáveis (normalizadas por estação+variável)</label>
-            <select
-              multiple
-              value={trendVars}
-              onChange={(e) => setTrendVars(Array.from(e.target.selectedOptions).map((o) => o.value))}
-              size={Math.min(10, Math.max(3, numericCols.length))}
-              style={{ width: "100%" }}
-            >
-              {numericCols.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          {trendsFigure ? (
-            <Plot style={{ width: "100%" }} config={{ responsive: true }} data={trendsFigure.data} layout={trendsFigure.layout} />
-          ) : (
-            <div>Selecione ao menos uma variável para exibir as tendências por estação.</div>
-          )}
+            {trendsFigure ? (
+              <div className="chart-wrapper" style={{ height: '600px' }}>
+                <Plot 
+                  style={{ width: "100%", height: "100%" }} 
+                  config={{ responsive: true, displayModeBar: true }} 
+                  data={trendsFigure.data} 
+                  layout={{ ...trendsFigure.layout, autosize: true }}
+                />
+              </div>
+            ) : (
+              <div className="no-data-message">
+                Selecione ao menos uma variável para exibir as tendências por estação.
+              </div>
+            )}
+          </section>
 
           {/* BOX por estação */}
-          <h2 style={{ marginTop: 28, marginBottom: 8 }}>🏷️ Comparação por Estação (Boxplots)</h2>
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ display: "block", fontWeight: 600 }}>Variável</label>
-            <select value={boxVar || ""} onChange={(e) => setBoxVar(e.target.value)}>
-              {numericCols.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          {boxByStation ? (
-            <Plot style={{ width: "100%" }} config={{ responsive: true }} data={boxByStation.data} layout={boxByStation.layout} />
-          ) : (
-            <div>Não há dados suficientes para os boxplots após os filtros.</div>
-          )}
+          <section className="section">
+            <h2 className="section-title">🏷️ Comparação por Estação (Boxplots)</h2>
+            <div className="box-controls">
+              <label className="filter-label">Variável</label>
+              <select 
+                value={boxVar || ""} 
+                onChange={(e) => setBoxVar(e.target.value)} 
+                className="box-select"
+              >
+                {numericCols.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {boxByStation ? (
+              <div className="chart-wrapper" style={{ height: '500px' }}>
+                <Plot 
+                  style={{ width: "100%", height: "100%" }} 
+                  config={{ responsive: true, displayModeBar: true }} 
+                  data={boxByStation.data} 
+                  layout={{ ...boxByStation.layout, autosize: true }}
+                />
+              </div>
+            ) : (
+              <div className="no-data-message">
+                Não há dados suficientes para os boxplots após os filtros.
+              </div>
+            )}
+          </section>
 
           {/* Sazonalidade mensal */}
-          <h2 style={{ marginTop: 28, marginBottom: 8 }}>📅 Sazonalidade Mensal (Boxplot por Mês)</h2>
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ display: "block", fontWeight: 600 }}>Variável</label>
-            <select value={monthVar || ""} onChange={(e) => setMonthVar(e.target.value)}>
-              {numericCols.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-          {monthlyBox ? (
-            <Plot style={{ width: "100%" }} config={{ responsive: true }} data={monthlyBox.data} layout={monthlyBox.layout} />
-          ) : null}
+          <section className="section">
+            <h2 className="section-title">📅 Sazonalidade Mensal (Boxplot por Mês)</h2>
+            <div className="box-controls">
+              <label className="filter-label">Variável</label>
+              <select 
+                value={monthVar || ""} 
+                onChange={(e) => setMonthVar(e.target.value)} 
+                className="box-select"
+              >
+                {numericCols.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {monthlyBox && (
+              <div className="chart-wrapper" style={{ height: '500px' }}>
+                <Plot 
+                  style={{ width: "100%", height: "100%" }} 
+                  config={{ responsive: true, displayModeBar: true }} 
+                  data={monthlyBox.data} 
+                  layout={{ ...monthlyBox.layout, autosize: true }}
+                />
+              </div>
+            )}
+          </section>
 
           {/* Correlação */}
-          <h2 style={{ marginTop: 28, marginBottom: 8 }}>🔗 Correlação entre Variáveis</h2>
-          {corrFig ? (
-            <Plot style={{ width: "100%" }} config={{ responsive: true }} data={corrFig.data} layout={corrFig.layout} />
-          ) : (
-            <div>Não foi possível calcular correlação (faltam variáveis numéricas).</div>
-          )}
+          <section className="section">
+            <h2 className="section-title">🔗 Correlação entre Variáveis</h2>
+            {corrFig ? (
+              <div className="chart-wrapper" style={{ height: '600px' }}>
+                <Plot 
+                  style={{ width: "100%", height: "100%" }} 
+                  config={{ responsive: true, displayModeBar: true }} 
+                  data={corrFig.data} 
+                  layout={{ ...corrFig.layout, autosize: true }}
+                />
+              </div>
+            ) : (
+              <div className="no-data-message">
+                Não foi possível calcular correlação (faltam variáveis numéricas).
+              </div>
+            )}
+          </section>
 
           {/* Completude */}
-          <h2 style={{ marginTop: 28, marginBottom: 8 }}>🧪 Completude por Variável (não nulos %)</h2>
-          {completenessFig ? (
-            <Plot style={{ width: "100%" }} config={{ responsive: true }} data={completenessFig.data} layout={completenessFig.layout} />
-          ) : null}
+          <section className="section">
+            <h2 className="section-title">🧪 Completude por Variável (não nulos %)</h2>
+            {completenessFig && (
+              <div className="chart-wrapper" style={{ height: '500px' }}>
+                <Plot 
+                  style={{ width: "100%", height: "100%" }} 
+                  config={{ responsive: true, displayModeBar: true }} 
+                  data={completenessFig.data} 
+                  layout={{ ...completenessFig.layout, autosize: true }}
+                />
+              </div>
+            )}
+          </section>
 
           {/* Exportar */}
-          <h2 style={{ marginTop: 28, marginBottom: 8 }}>⬇️ Exportar dados filtrados</h2>
-          <button onClick={onExport} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #e5e7eb" }}>
-            Baixar CSV filtrado
-          </button>
+          <section className="export-section">
+            <h2 className="section-title">⬇️ Exportar dados filtrados</h2>
+            <button onClick={onExport} className="export-button">
+              Baixar CSV filtrado
+            </button>
+          </section>
         </>
       )}
-
-      <style>{`
-        .spinner {
-          width: 16px; height: 16px; border: 2px solid #e5e7eb; border-top-color: #111827;
-          border-radius: 50%; animation: spin 0.9s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }
