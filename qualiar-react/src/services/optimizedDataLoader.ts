@@ -20,7 +20,7 @@ export async function loadOptimizedSUSData(): Promise<any[]> {
     
     // Carrega apenas uma parte inicial para teste
     const firstPart = await fetchCSV(urls[0]);
-    susDataCache = firstPart.slice(0, 5000); // Limita a 5000 registros para teste
+    susDataCache = firstPart.slice(0, 12000); // Limita a 5000 registros para teste
     
     console.log('Dados carregados:', susDataCache.length, 'registros');
     return susDataCache;

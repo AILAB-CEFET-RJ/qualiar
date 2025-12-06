@@ -6,6 +6,7 @@ import { parseDateFlexible } from "../../utils/date";
 import { toNumberOrNaN, uniq, groupBy } from "../../utils/data";
 import { percentile, median, rollingMean} from "../../utils/math";
 import { CsvExportButton } from '../../components/common/CsvExportButton';
+import { LoadingState } from "../../components/common/LoadingState";
 import {
   MapIcon,
   InfoIcon,
@@ -562,11 +563,8 @@ export default function EstacoesPage(): JSX.Element {
         </div>
       </section>
 
-      {loading && (
-        <div className="loading-state">
-          <div className="spinner" /> Carregando dados...
-        </div>
-      )}
+      {loading && <LoadingState message="Carregando dados..." />}
+
       {error && (
         <div className="error-state">
           Erro ao carregar: <b>{error}</b>

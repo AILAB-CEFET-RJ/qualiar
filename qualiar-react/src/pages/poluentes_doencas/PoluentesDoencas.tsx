@@ -18,6 +18,7 @@ import {
   spearmanCorrelation,
   calculateRollingAverage
 } from "../../utils/math"; // Importando funções do math.ts
+import { LoadingState } from "../../components/common/LoadingState";
 
 // Tipos para os dados
 interface RioData {
@@ -227,7 +228,7 @@ export default function PoluentesDoencas(): JSX.Element {
     return Array.from(grupos.values());
   }, [melhoresCombinacoes]);
 
-  if (loading) return <div className="loading">Carregando dados combinados...</div>;
+  if (loading) return <LoadingState message="Carregando dados..." />;
 
   return (
     <div className="poluentes-container">

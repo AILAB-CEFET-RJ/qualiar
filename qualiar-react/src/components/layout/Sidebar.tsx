@@ -16,10 +16,10 @@ export default function Sidebar(): JSX.Element {
       </div>
 
       <div className="sidebar-links">
-        <NavLink to="/rio" className={({isActive}) => isActive ? "link active" : "link"}>Qualidade do ar — Rio</NavLink>
-        <NavLink to="/saude" className={({isActive}) => isActive ? "link active" : "link"}>Dados de Saúde</NavLink>
-        <NavLink to="/estacoes" className={({isActive}) => isActive ? "link active" : "link"}>Estações (EDA)</NavLink>
-        <NavLink to="/poluentes" className={({isActive}) => isActive ? "link active" : "link"}>Poluentes x Doenças</NavLink>
+        <NavLink to="/rio" className={({isActive}) => isActive ? "link active" : "link"}>Dados de Qualidade do Ar</NavLink>
+        <NavLink to="/saude" className={({isActive}) => isActive ? "link active" : "link"}>Dados de Internações</NavLink>
+        <NavLink to="/estacoes" className={({isActive}) => isActive ? "link active" : "link"}>Comparação por Estações</NavLink>
+        <NavLink to="/poluentes" className={({isActive}) => isActive ? "link active" : "link"}>Poluentes x Internações</NavLink>
       </div>
 
       <div className="sidebar-footer">

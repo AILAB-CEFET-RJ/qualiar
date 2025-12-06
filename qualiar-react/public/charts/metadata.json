@@ -1,0 +1,22 @@
+{
+  "generated_at": "2025-12-05T21:14:55.924681",
+  "metrics": {
+    "total_internacoes": 1872092,
+    "media_idade": 30.91351279744799,
+    "taxa_mortalidade": 15.112665403195995,
+    "media_permanencia": 8.106805114278572,
+    "ano_min": 2012,
+    "ano_max": 2024
+  },
+  "charts": {
+    "time_series": "time_series.svg",
+    "heatmap_count": "heatmap_count.svg",
+    "heatmap_share": "heatmap_share.svg",
+    "sex_distribution_pie": "sex_distribution_pie.svg",
+    "sex_distribution_bar": "sex_distribution_bar.svg",
+    "age_distribution": "age_distribution.svg",
+    "cid_distribution": "cid_distribution.svg",
+    "mortality_by_age": "mortality_by_age.svg",
+    "mortality_time_series": "mortality_time_series.svg"
+  }
+}

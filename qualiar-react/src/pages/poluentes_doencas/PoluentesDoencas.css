@@ -136,16 +136,6 @@
   color: #a0aec0;
 }
 
-/* Estado de carregamento */
-.loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  font-size: 18px;
-  color: #4a5568;
-}
-
 /* Responsividade */
 @media (max-width: 768px) {
   .poluentes-container {

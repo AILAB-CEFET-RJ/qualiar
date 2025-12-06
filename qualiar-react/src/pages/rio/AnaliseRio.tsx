@@ -3,7 +3,7 @@ import Plot from "react-plotly.js";
 
 import { useCsvData, rioDataParser } from "../../hooks/useCsvData";
 import { useDateFilter } from "../../hooks/useFilters";
-import { useTimeSeriesStats, useCorrelationMatrix, useGroupStats } from "../../hooks/useStats";
+import { useTimeSeriesStats, useCorrelationMatrix } from "../../hooks/useStats";
 import { useHeatmapData } from "../../hooks/useHeatmapData";
 import { useExtremeData } from "../../hooks/useExtremeData";
 import { useCompleteness } from "../../hooks/useCompleteness";
@@ -16,6 +16,7 @@ import { classificaAQI } from "../../utils/classifiers";
 import type { RioData } from "../../types/data";
 import { CsvExportButton, formatDateFields } from '../../components/common/CsvExportButton';
 import "./AnaliseRio.css";
+import { LoadingState } from "../../components/common/LoadingState";
 import {
   RioIcon,
   FilterIcon,
@@ -98,7 +99,6 @@ export default function AnaliseRio() {
   const multiVarSeries = useMultiVarSeries(filteredData, 'data_dia', selectedVars, 30);
   const heatmapData = useHeatmapData(filteredData, 'ano', 'mes', heatmapVar, heatmapAgg);
   const correlationData = useCorrelationMatrix(filteredData, correlationVars);
-  const monthlyStats = useGroupStats(filteredData, 'mes', boxplotVar as keyof RioData);
   const completenessData = useCompleteness(filteredData, NUMERIC_COLS);
   const extremeDays = useExtremeData(filteredData, 'data_dia', extremeVar, extremeCount);
 
@@ -140,11 +140,7 @@ export default function AnaliseRio() {
   const loading = rawLoading || treatedLoading;
   const error = rawError || treatedError;
 
-  if (loading) return (
-    <div className="loading-state-rio">
-      <div className="spinner-rio" /> Carregando dados...
-    </div>
-  );
+  if (loading) return <LoadingState message="Carregando dados..." />;
   
   if (error) return <div className="error-state-rio">{error}</div>;
 
@@ -152,7 +148,10 @@ export default function AnaliseRio() {
     <div className="analise-rio-container">
       <h1 className="analise-rio-title">
         <RioIcon style={{ marginRight: '10px', verticalAlign: 'middle' }} />
-        Rio de Janeiro — EDA Ambiental (2012-2024)
+        Rio de Janeiro — EDA Ambiental
+        <span style={{ fontSize: "0.8em", color: "#666", marginLeft: "10px" }}>
+          (2012 - 2024)
+        </span>
       </h1>
 
       {/* Filtros */}
