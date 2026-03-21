@@ -8,21 +8,21 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-URL = "https://www.data.rio/datasets/PCRJ::qualidade-do-ar-dados-hor%C3%A1rios/about?layer=2"
-NOME_ARQUIVO_FINAL = "dados_qualidade_ar.parquet"
+URL = "https://www.data.rio/datasets/PCRJ::qualidade-do-ar-dados-horários/explore?layer=0"
+NOME_ARQUIVO_FINAL = "dados_sensores.parquet"
 COLUNAS_REMOVER = [
-    "rs",
-    "dir_vento",
-    "vel_vento",
-    "hcnm",
-    "hct",
-    "ch4",
+    "status",
+    "operacao",
+    "reativação",
+    "Código",
+    "lat",
+    "lon",
     "x_utm_sirgas2000",
     "y_utm_sirgas2000",
 ]
 
 LOADER_XPATH = "/html/body/calcite-loader//div/svg[2]"
-BOTAO_ABRIR_DOWNLOAD_XPATH = "/html/body/div[7]/div[2]/div/div[1]/div[2]/div/div/nav/div/div/div/button[3]"
+BOTAO_ABRIR_DOWNLOAD_XPATH = "/html/body/div[7]/div[2]/div/div[1]/div[2]/div/div/nav/div/div/div/button[4]"
 LISTA_DOWNLOAD_XPATH = "/html/body/div[7]/div[2]/div/div[1]/div[1]/div/div/div/div[3]/arcgis-hub-download-list"
 
 
@@ -193,7 +193,6 @@ def main() -> None:
         print(f"Download concluido: {arquivo_baixado}")
         arquivo_parquet = converter_csv_para_parquet(arquivo_baixado)
         print(f"Arquivo final salvo em: {arquivo_parquet}")
-        time.sleep(5)
 
     finally:
         driver.quit()
