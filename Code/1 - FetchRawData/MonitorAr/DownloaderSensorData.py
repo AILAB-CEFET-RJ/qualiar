@@ -11,6 +11,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 URL = "https://www.data.rio/datasets/PCRJ::qualidade-do-ar-dados-hor%C3%A1rios/about?layer=2"
 NOME_ARQUIVO_FINAL = "dados_qualidade_ar_sensores.parquet"
 COLUNAS_REMOVER = [
+    "objectid",
     "rs",
     "dir_vento",
     "vel_vento",

@@ -11,14 +11,17 @@ from selenium.webdriver.support.ui import WebDriverWait
 URL = "https://www.data.rio/datasets/PCRJ::qualidade-do-ar-dados-horários/explore?layer=0"
 NOME_ARQUIVO_FINAL = "dados_sensores.parquet"
 COLUNAS_REMOVER = [
+    "OBJECTID",
     "status",
     "operacao",
-    "reativação",
+    "reativaçao",
     "Código",
-    "lat",
-    "lon",
-    "x_utm_sirgas2000",
-    "y_utm_sirgas2000",
+    "Lat",
+    "Lon",
+    "X_UTM_Sirgas2000",
+    "Y_UTM_Sirgas2000",
+    "x",
+    "y"
 ]
 
 LOADER_XPATH = "/html/body/calcite-loader//div/svg[2]"
