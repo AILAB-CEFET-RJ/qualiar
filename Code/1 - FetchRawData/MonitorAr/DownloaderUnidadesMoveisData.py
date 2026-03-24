@@ -14,6 +14,7 @@ COLUNAS_REMOVER = [
     "objectid",
     "name",
     "rs",
+    "pres",
     "dir_vento",
     "vel_vento",
     "hcnm",

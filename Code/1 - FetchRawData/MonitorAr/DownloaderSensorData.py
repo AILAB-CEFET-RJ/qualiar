@@ -13,6 +13,7 @@ NOME_ARQUIVO_FINAL = "dados_qualidade_ar_sensores.parquet"
 COLUNAS_REMOVER = [
     "objectid",
     "rs",
+    "pres",
     "dir_vento",
     "vel_vento",
     "hcnm",
