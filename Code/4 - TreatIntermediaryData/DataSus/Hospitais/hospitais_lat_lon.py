@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import re
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple
 
 import pandas as pd
+import requests
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.chrome.options import Options
@@ -22,16 +24,20 @@ CSV_URL = (
     "respiratory_hospitalization_time_series_by_hospital.csv"
 )
 CNES_URL = "https://cnes.datasus.gov.br/pages/estabelecimentos/consulta.jsp"
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+
 OUTPUT_CSV_PATH = (
     "Data/IntermediaryData/DataSus/"
     "respiratory_hospitalization_time_series_by_hospital_with_endereco.csv"
 )
 
-# XPaths solicitados pelo usuario
 XPATH_INPUT_CNES = "/html/body/div[2]/main/div/div[2]/div/form[2]/div/input"
 XPATH_BUTTON_SEARCH_CNES = "/html/body/div[2]/main/div/div[2]/div/form[2]/div/button"
 XPATH_BUTTON_INFO_ESTABELECIMENTO = (
     "/html/body/div[2]/main/div/div[2]/div/div[3]/table/tbody/tr/td[8]/button"
+)
+XPATH_NOME_HOSP_INFO = (
+    "/html/body/div[2]/main/div/div[2]/div/div[4]/div/div/div[2]/div/form/div[1]/div[1]/div/input"
 )
 XPATH_LOGRADOURO_INFO = (
     "/html/body/div[2]/main/div/div[2]/div/div[4]/div/div/div[2]/div/form/div[3]/div[1]/div/input"
@@ -57,6 +63,10 @@ LOCATORS = {
         (By.XPATH, XPATH_BUTTON_INFO_ESTABELECIMENTO),
         (By.XPATH, "//table/tbody/tr[1]/td[last()]//button"),
     ],
+    "nome_hosp_info": [
+        (By.XPATH, XPATH_NOME_HOSP_INFO),
+        (By.XPATH, "//div[contains(@class,'modal')]//input[contains(@id,'nome')]"),
+    ],
     "logradouro_info": [
         (By.XPATH, XPATH_LOGRADOURO_INFO),
         (By.XPATH, "//div[contains(@class,'modal')]//input[contains(@id,'logradouro')]"),
@@ -79,10 +89,26 @@ RESULT_WAIT = 12
 MODAL_WAIT = 12
 HEADLESS = False
 
+NOMINATIM_TIMEOUT = 20
+NOMINATIM_MAX_TENTATIVAS = 3
+NOMINATIM_MIN_INTERVALO_SEG = 1.1
+NOMINATIM_USER_AGENT = (
+    "qualiar-geocoder/1.0 (AILAB-CEFET-RJ; projeto-qualiar)"
+)
+
 STATUS_ENCONTRADO = "Encontrado"
-STATUS_NAO_ENCONTRADO = "Não encontrado"
+STATUS_NAO_ENCONTRADO = "Nao encontrado"
 STATUS_ERRO = "Erro na consulta"
-STATUS_NAO_CONSULTADO = "Não consultado (CNES vazio)"
+STATUS_NAO_CONSULTADO = "Nao consultado (CNES vazio)"
+
+AJUSTES_MANUAIS_POR_CNES: Dict[str, Dict[str, str]] = {
+    "2296748": {"Logradouro": "RUA DUALMA RIBEIRO ANDRADE"},
+    "2273187": {"NOME_HOSP": "HOSPITAL MUNICIPAL ALVARO RAMOS"},
+    "2273349": {"NOME_HOSP": "HOSPITAL MUNICIPAL RAPHAEL DE PAULA SOUZA"},
+    "2270390": {"NOME_HOSP": "HOSPITAL MATERNIDADE HERCULANO PINHEIRO"},
+    "2289709": {"Logradouro": "AVENIDA BENJAMIN PINTO DIAS"},
+    "2296764": {"Logradouro": "AVENIDA BENJAMIN PINTO DIAS"},
+}
 
 
 def normalizar_cnes(valor: object) -> Optional[str]:
@@ -102,6 +128,14 @@ def normalizar_cnes(valor: object) -> Optional[str]:
     return texto
 
 
+def normalizar_texto(valor: object) -> str:
+    if valor is None:
+        return ""
+    if pd.isna(valor):
+        return ""
+    return str(valor).strip()
+
+
 def carregar_dataframe(csv_url: str) -> pd.DataFrame:
     print("Lendo CSV remoto...")
     df = pd.read_csv(csv_url, dtype={"CNES": "string"}, encoding="utf-8")
@@ -109,13 +143,14 @@ def carregar_dataframe(csv_url: str) -> pd.DataFrame:
     if "CNES" not in df.columns:
         raise KeyError(
             "A coluna 'CNES' nao existe no CSV informado. "
-            "Verifique a fonte ou gere o arquivo com CNES antes do scraping."
+            "Verifique a fonte antes de executar o scraping."
         )
 
     df["CNES"] = df["CNES"].map(normalizar_cnes).astype("string")
     total = len(df)
     unicos = df["CNES"].dropna().nunique()
     vazios = int(df["CNES"].isna().sum())
+
     print(f"Linhas totais: {total}")
     print(f"CNES unicos: {unicos}")
     print(f"Linhas com CNES vazio: {vazios}")
@@ -190,7 +225,7 @@ def fechar_modal(driver: webdriver.Chrome) -> None:
 
     try:
         WebDriverWait(driver, 6).until(
-            EC.invisibility_of_element_located(LOCATORS["logradouro_info"][0])
+            EC.invisibility_of_element_located(LOCATORS["close_modal"][0])
         )
     except TimeoutException:
         pass
@@ -245,6 +280,12 @@ def consultar_cnes(
 
             button_info.click()
 
+            nome_hosp_input = esperar_elemento(
+                driver=driver,
+                locators=LOCATORS["nome_hosp_info"],
+                timeout=MODAL_WAIT,
+                condition=EC.visibility_of_element_located,
+            )
             logradouro_input = esperar_elemento(
                 driver=driver,
                 locators=LOCATORS["logradouro_info"],
@@ -258,19 +299,22 @@ def consultar_cnes(
                 condition=EC.visibility_of_element_located,
             )
 
-            logradouro = (logradouro_input.get_attribute("value") or "").strip()
-            numero = (numero_input.get_attribute("value") or "").strip()
+            nome_hosp = normalizar_texto(nome_hosp_input.get_attribute("value"))
+            logradouro = normalizar_texto(logradouro_input.get_attribute("value"))
+            numero = normalizar_texto(numero_input.get_attribute("value"))
 
             fechar_modal(driver)
 
             print(
                 "  - Encontrado | "
+                f"Nome: {nome_hosp if nome_hosp else '[vazio]'} | "
                 f"Logradouro: {logradouro if logradouro else '[vazio]'} | "
                 f"Numero: {numero if numero else '[vazio]'}"
             )
 
             return {
                 "CNES": cnes,
+                "NOME_HOSP": nome_hosp or None,
                 "Logradouro": logradouro or None,
                 "Numero": numero or None,
                 "Status_Busca_CNES": STATUS_ENCONTRADO,
@@ -295,6 +339,7 @@ def consultar_cnes(
         print(f"  - CNES {cnes}: nao encontrado apos {max_tentativas} tentativa(s).")
         return {
             "CNES": cnes,
+            "NOME_HOSP": None,
             "Logradouro": None,
             "Numero": None,
             "Status_Busca_CNES": STATUS_NAO_ENCONTRADO,
@@ -303,6 +348,7 @@ def consultar_cnes(
     print(f"  - CNES {cnes}: erro apos {max_tentativas} tentativa(s).")
     return {
         "CNES": cnes,
+        "NOME_HOSP": None,
         "Logradouro": None,
         "Numero": None,
         "Status_Busca_CNES": STATUS_ERRO,
@@ -328,13 +374,45 @@ def consultar_todos_cnes(
         resultados.append(resultado)
 
     return pd.DataFrame(
-        resultados, columns=["CNES", "Logradouro", "Numero", "Status_Busca_CNES"]
+        resultados,
+        columns=["CNES", "NOME_HOSP", "Logradouro", "Numero", "Status_Busca_CNES"],
     )
 
 
+def aplicar_ajustes_manuais(df_consultas: pd.DataFrame) -> pd.DataFrame:
+    df_ajustado = df_consultas.copy()
+    df_ajustado["Ajuste_Manual"] = False
+    df_ajustado["Campos_Ajustados"] = ""
+
+    print("Aplicando ajustes manuais de CNES (quando houver)...")
+    for cnes, ajustes in AJUSTES_MANUAIS_POR_CNES.items():
+        mask = df_ajustado["CNES"].astype("string") == cnes
+        if not mask.any():
+            print(f"  - CNES {cnes}: nao presente na lista consultada.")
+            continue
+
+        campos_alterados: List[str] = []
+        for campo, novo_valor in ajustes.items():
+            valor_atual = normalizar_texto(df_ajustado.loc[mask, campo].iloc[0])
+            if valor_atual != novo_valor:
+                df_ajustado.loc[mask, campo] = novo_valor
+                campos_alterados.append(campo)
+
+        if campos_alterados:
+            df_ajustado.loc[mask, "Ajuste_Manual"] = True
+            df_ajustado.loc[mask, "Campos_Ajustados"] = ",".join(campos_alterados)
+            print(
+                f"  - CNES {cnes}: ajuste aplicado em {', '.join(campos_alterados)}."
+            )
+        else:
+            print(f"  - CNES {cnes}: valor ja estava igual ao ajuste manual.")
+
+    return df_ajustado
+
+
 def montar_endereco(logradouro: str, numero: str) -> str:
-    log = (logradouro or "").strip()
-    num = (numero or "").strip()
+    log = normalizar_texto(logradouro)
+    num = normalizar_texto(numero)
 
     if log and num:
         return f"{log}, {num}"
@@ -345,6 +423,184 @@ def montar_endereco(logradouro: str, numero: str) -> str:
     return ""
 
 
+class NominatimClient:
+    def __init__(
+        self,
+        timeout: int = NOMINATIM_TIMEOUT,
+        min_intervalo_seg: float = NOMINATIM_MIN_INTERVALO_SEG,
+        max_tentativas: int = NOMINATIM_MAX_TENTATIVAS,
+    ) -> None:
+        self.timeout = timeout
+        self.min_intervalo_seg = min_intervalo_seg
+        self.max_tentativas = max_tentativas
+        self.ultima_requisicao_ts = 0.0
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "User-Agent": NOMINATIM_USER_AGENT,
+                "Accept": "application/json",
+            }
+        )
+
+    def _respeitar_intervalo(self) -> None:
+        agora = time.monotonic()
+        decorrido = agora - self.ultima_requisicao_ts
+        if decorrido < self.min_intervalo_seg:
+            time.sleep(self.min_intervalo_seg - decorrido)
+        self.ultima_requisicao_ts = time.monotonic()
+
+    def buscar(
+        self,
+        amenity: Optional[str] = None,
+        street: Optional[str] = None,
+    ) -> List[Dict[str, object]]:
+        if not amenity and not street:
+            return []
+
+        params: Dict[str, str] = {
+            "polygon_geojson": "1",
+            "format": "jsonv2",
+        }
+        if amenity:
+            params["amenity"] = amenity
+        if street:
+            params["street"] = street
+
+        for tentativa in range(1, self.max_tentativas + 1):
+            try:
+                self._respeitar_intervalo()
+                resp = self.session.get(
+                    NOMINATIM_URL,
+                    params=params,
+                    timeout=self.timeout,
+                )
+
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data if isinstance(data, list) else []
+
+                if resp.status_code in {429, 500, 502, 503, 504}:
+                    print(
+                        f"  - Nominatim HTTP {resp.status_code} "
+                        f"(tentativa {tentativa}/{self.max_tentativas})"
+                    )
+                    continue
+
+                print(f"  - Nominatim retorno inesperado HTTP {resp.status_code}.")
+                return []
+
+            except requests.RequestException as erro:
+                print(
+                    f"  - Erro de rede no Nominatim "
+                    f"(tentativa {tentativa}/{self.max_tentativas}): {erro}"
+                )
+                continue
+            except ValueError as erro:
+                print(f"  - Falha ao decodificar JSON do Nominatim: {erro}")
+                return []
+
+        return []
+
+    def close(self) -> None:
+        self.session.close()
+
+
+def extrair_lat_lon(
+    resultados: Sequence[Dict[str, object]],
+) -> Tuple[Optional[float], Optional[float]]:
+    if not resultados:
+        return None, None
+
+    candidato: Optional[Dict[str, object]] = None
+    for item in resultados:
+        if str(item.get("type", "")).lower() == "hospital":
+            candidato = item
+            break
+
+    if candidato is None:
+        candidato = resultados[0]
+
+    lat_raw = candidato.get("lat")
+    lon_raw = candidato.get("lon")
+
+    try:
+        lat = float(str(lat_raw)) if lat_raw not in (None, "") else None
+        lon = float(str(lon_raw)) if lon_raw not in (None, "") else None
+    except ValueError:
+        return None, None
+
+    return lat, lon
+
+
+def obter_lat_lon(
+    client: NominatimClient,
+    nome_hosp: str,
+    logradouro: str,
+    numero: str,
+) -> Tuple[Optional[float], Optional[float], str]:
+    nome = normalizar_texto(nome_hosp)
+    rua = montar_endereco(logradouro, numero)
+
+    if nome:
+        resultados_nome = client.buscar(amenity=nome)
+        lat, lon = extrair_lat_lon(resultados_nome)
+        if lat is not None and lon is not None:
+            return lat, lon, "amenity"
+
+    if rua:
+        resultados_rua = client.buscar(street=rua)
+        lat, lon = extrair_lat_lon(resultados_rua)
+        if lat is not None and lon is not None:
+            return lat, lon, "street"
+
+    return None, None, "nao_encontrado"
+
+
+def enriquecer_lat_lon(df_consultas: pd.DataFrame) -> pd.DataFrame:
+    df_geo = df_consultas.copy()
+    df_geo["Latitude"] = None
+    df_geo["Longitude"] = None
+
+    total = len(df_geo)
+    client = NominatimClient()
+
+    try:
+        for indice, row in enumerate(df_geo.itertuples(index=True), start=1):
+            cnes = normalizar_texto(row.CNES)
+            nome_hosp = normalizar_texto(row.NOME_HOSP)
+            logradouro = normalizar_texto(row.Logradouro)
+            numero = normalizar_texto(row.Numero)
+            ajuste_manual = bool(getattr(row, "Ajuste_Manual", False))
+            campos_ajustados = normalizar_texto(getattr(row, "Campos_Ajustados", ""))
+            status_ajuste = "SIM" if ajuste_manual else "NAO"
+
+            print(
+                f"[{indice}/{total}] Geocodificando CNES {cnes} | "
+                f"Manipulado: {status_ajuste}"
+            )
+            if ajuste_manual and campos_ajustados:
+                print(f"  - Campos manipulados: {campos_ajustados}")
+
+            lat, lon, metodo = obter_lat_lon(
+                client=client,
+                nome_hosp=nome_hosp,
+                logradouro=logradouro,
+                numero=numero,
+            )
+
+            df_geo.at[row.Index, "Latitude"] = lat
+            df_geo.at[row.Index, "Longitude"] = lon
+
+            if lat is not None and lon is not None:
+                print(f"  - Geocode encontrado ({metodo}) | lat={lat} lon={lon}")
+            else:
+                print("  - Geocode nao encontrado.")
+    finally:
+        client.close()
+
+    return df_geo
+
+
 def enriquecer_dataframe(df_original: pd.DataFrame, df_enderecos: pd.DataFrame) -> pd.DataFrame:
     df_saida = df_original.copy()
     df_saida["CNES"] = df_saida["CNES"].map(normalizar_cnes).astype("string")
@@ -353,9 +609,11 @@ def enriquecer_dataframe(df_original: pd.DataFrame, df_enderecos: pd.DataFrame) 
     df_aux["CNES"] = df_aux["CNES"].astype("string")
 
     df_saida = df_saida.merge(df_aux, on="CNES", how="left", validate="m:1")
-    df_saida["Status_Busca_CNES"] = df_saida["Status_Busca_CNES"].fillna(STATUS_NAO_CONSULTADO)
+    df_saida["Status_Busca_CNES"] = df_saida["Status_Busca_CNES"].fillna(
+        STATUS_NAO_CONSULTADO
+    )
 
-    for coluna in ["Logradouro", "Numero"]:
+    for coluna in ["NOME_HOSP", "Logradouro", "Numero"]:
         df_saida[coluna] = df_saida[coluna].fillna("").astype(str).str.strip()
 
     df_saida["Endereco"] = [
@@ -363,6 +621,24 @@ def enriquecer_dataframe(df_original: pd.DataFrame, df_enderecos: pd.DataFrame) 
         for logradouro, numero in zip(df_saida["Logradouro"], df_saida["Numero"])
     ]
 
+    df_saida["Latitude"] = pd.to_numeric(df_saida["Latitude"], errors="coerce")
+    df_saida["Longitude"] = pd.to_numeric(df_saida["Longitude"], errors="coerce")
+    return df_saida
+
+
+def organizar_saida_final(df: pd.DataFrame) -> pd.DataFrame:
+    colunas_obrigatorias = ["CNES", "data_dia", "num_internacoes", "Latitude", "Longitude"]
+    faltantes = [col for col in colunas_obrigatorias if col not in df.columns]
+    if faltantes:
+        raise KeyError(
+            "Colunas obrigatorias ausentes para saida final: "
+            + ", ".join(faltantes)
+        )
+
+    df_saida = df.copy()
+    df_saida["LAT"] = pd.to_numeric(df_saida["Latitude"], errors="coerce")
+    df_saida["LON"] = pd.to_numeric(df_saida["Longitude"], errors="coerce")
+    df_saida = df_saida[["CNES", "data_dia", "num_internacoes", "LAT", "LON"]]
     return df_saida
 
 
@@ -381,24 +657,26 @@ def main() -> None:
     if not cnes_unicos:
         print("Nenhum CNES valido encontrado. Salvando somente com colunas vazias.")
         df_vazio = df_original.copy()
-        df_vazio["Logradouro"] = ""
-        df_vazio["Numero"] = ""
-        df_vazio["Endereco"] = ""
-        df_vazio["Status_Busca_CNES"] = STATUS_NAO_CONSULTADO
-        salvar_resultado(df_vazio, OUTPUT_CSV_PATH)
+        df_vazio["Latitude"] = None
+        df_vazio["Longitude"] = None
+        df_saida = organizar_saida_final(df_vazio)
+        salvar_resultado(df_saida, OUTPUT_CSV_PATH)
         return
 
     driver: Optional[webdriver.Chrome] = None
     try:
         driver = configurar_driver(headless=HEADLESS)
-        df_enderecos = consultar_todos_cnes(driver, cnes_unicos)
+        df_consultas = consultar_todos_cnes(driver, cnes_unicos)
     finally:
         if driver is not None:
             driver.quit()
             print("Navegador fechado.")
 
-    df_final = enriquecer_dataframe(df_original, df_enderecos)
-    salvar_resultado(df_final, OUTPUT_CSV_PATH)
+    df_consultas = aplicar_ajustes_manuais(df_consultas)
+    df_consultas = enriquecer_lat_lon(df_consultas)
+    df_enriquecido = enriquecer_dataframe(df_original, df_consultas)
+    df_saida = organizar_saida_final(df_enriquecido)
+    salvar_resultado(df_saida, OUTPUT_CSV_PATH)
     print("Processo finalizado com sucesso.")
 
 
