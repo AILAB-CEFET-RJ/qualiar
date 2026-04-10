@@ -649,8 +649,8 @@ def organizar_saida_final(df: pd.DataFrame) -> pd.DataFrame:
 def salvar_resultado(df_final: pd.DataFrame, output_path: str) -> Path:
     caminho_saida = Path(output_path)
     caminho_saida.parent.mkdir(parents=True, exist_ok=True)
-    df_final.to_csv(caminho_saida, index=False, encoding="utf-8")
-    print(f"CSV salvo em: {caminho_saida.resolve()}")
+    df_final.to_parquet(caminho_saida, index=False)
+    print(f"Parquet salvo em: {caminho_saida.resolve()}")
     return caminho_saida
 
 
