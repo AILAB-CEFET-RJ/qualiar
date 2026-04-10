@@ -61,12 +61,12 @@ pyarrow==21.0.0
 pycparser==3.0
 Pygments==2.19.2
 pyparsing==3.2.3
-pypiwin32==223
+pypiwin32==223; platform_system == "Windows"
 PySocks==1.7.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 pytz==2025.2
-pywin32==311
+pywin32==311; platform_system == "Windows"
 pyzmq==27.0.1
 requests==2.33.1
 rpds-py==0.27.0
