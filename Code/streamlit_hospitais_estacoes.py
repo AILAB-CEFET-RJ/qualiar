@@ -99,9 +99,9 @@ def carregar_bases() -> tuple[pd.DataFrame, pd.DataFrame]:
 
     df_hospitais = pd.read_parquet(
         caminho_hospitais,
-        usecols=["CNES", "LAT", "LON"],
-        dtype={"CNES": "string"},
+        columns=["CNES", "LAT", "LON"],
     )
+    df_hospitais["CNES"] = df_hospitais["CNES"].astype("string")
     df_hospitais["CNES"] = df_hospitais["CNES"].map(normalizar_cnes)
     df_hospitais["LAT"] = pd.to_numeric(df_hospitais["LAT"], errors="coerce")
     df_hospitais["LON"] = pd.to_numeric(df_hospitais["LON"], errors="coerce")
