@@ -8,28 +8,6 @@ import pydeck as pdk
 import streamlit as st
 
 
-SELECTED_HOSP = [
-    "2296748",
-    "2269384",
-    "2295423",
-    "2291266",
-    "2269481",
-    "2798662",
-    "2277751",
-    "2270269",
-    "2296306",
-    "2269341",
-    "2269724",
-    "2270609",
-    "2269783",
-    "2296616",
-    "2280167",
-    "2273411",
-    "2270234",
-    "2298120",
-]
-
-
 def encontrar_raiz_projeto() -> Path:
     diretorio_atual = Path(__file__).resolve().parent
     for caminho in [diretorio_atual, *diretorio_atual.parents]:
@@ -281,19 +259,6 @@ def main() -> None:
         st.stop()
 
     proximidade = calcular_estacao_mais_proxima(hospitais, estacoes)
-    cnes_alvo = sorted({normalizar_cnes(cnes) for cnes in SELECTED_HOSP})
-    proximidade = proximidade[proximidade["CNES"].isin(cnes_alvo)].copy()
-
-    if proximidade.empty:
-        st.error("Nenhum hospital da lista SELECTED_HOSP foi encontrado na base.")
-        st.stop()
-
-    cnes_ausentes = sorted(set(cnes_alvo) - set(proximidade["CNES"].astype(str)))
-    if cnes_ausentes:
-        st.warning(
-            "Alguns CNES da lista nao foram encontrados com coordenadas validas: "
-            + ", ".join(cnes_ausentes)
-        )
 
     cnes_disponiveis = proximidade["CNES"].astype(str).tolist()
     estacoes_disponiveis = sorted(estacoes["Nome"].astype(str).unique().tolist())
