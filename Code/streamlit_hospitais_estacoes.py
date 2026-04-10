@@ -81,7 +81,7 @@ def carregar_bases() -> tuple[pd.DataFrame, pd.DataFrame]:
         / "Data"
         / "IntermediaryData"
         / "DataSus"
-        / "respiratory_hospitalization_time_series_by_hospital_with_endereco.csv"
+        / "respiratory_hospitalization_time_series_by_hospital_with_endereco.parquet"
     )
     caminho_estacoes = (
         raiz
@@ -97,7 +97,7 @@ def carregar_bases() -> tuple[pd.DataFrame, pd.DataFrame]:
             "Arquivos esperados nao encontrados em Data/IntermediaryData."
         )
 
-    df_hospitais = pd.read_csv(
+    df_hospitais = pd.read_parquet(
         caminho_hospitais,
         usecols=["CNES", "LAT", "LON"],
         dtype={"CNES": "string"},

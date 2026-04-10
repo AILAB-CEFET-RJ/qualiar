@@ -18,17 +18,17 @@ from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
 
-CSV_URL = (
+PARQUET_URL = (
     "https://raw.githubusercontent.com/AILAB-CEFET-RJ/qualiar/refs/heads/"
     "Refactoring-And-Documentation/Data/IntermediaryData/DataSus/"
-    "respiratory_hospitalization_time_series_by_hospital.csv"
+    "respiratory_hospitalization_time_series_by_hospital.parquet"
 )
 CNES_URL = "https://cnes.datasus.gov.br/pages/estabelecimentos/consulta.jsp"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
-OUTPUT_CSV_PATH = (
+OUTPUT_PARQUET_PATH = (
     "Data/IntermediaryData/DataSus/"
-    "respiratory_hospitalization_time_series_by_hospital_with_endereco.csv"
+    "respiratory_hospitalization_time_series_by_hospital_with_endereco.parquet"
 )
 
 XPATH_INPUT_CNES = "/html/body/div[2]/main/div/div[2]/div/form[2]/div/input"
@@ -140,13 +140,13 @@ def normalizar_texto(valor: object) -> str:
     return str(valor).strip()
 
 
-def carregar_dataframe(csv_url: str) -> pd.DataFrame:
-    print("Lendo CSV remoto...")
-    df = pd.read_csv(csv_url, dtype={"CNES": "string"}, encoding="utf-8")
+def carregar_dataframe(parquet_url: str) -> pd.DataFrame:
+    print("Lendo Parquet remoto...")
+    df = pd.read_parquet(parquet_url)
 
     if "CNES" not in df.columns:
         raise KeyError(
-            "A coluna 'CNES' nao existe no CSV informado. "
+            "A coluna 'CNES' nao existe no Parquet informado. "
             "Verifique a fonte antes de executar o scraping."
         )
 
@@ -655,7 +655,7 @@ def salvar_resultado(df_final: pd.DataFrame, output_path: str) -> Path:
 
 
 def main() -> None:
-    df_original = carregar_dataframe(CSV_URL)
+    df_original = carregar_dataframe(PARQUET_URL)
     cnes_unicos = extrair_cnes_unicos(df_original)
 
     if not cnes_unicos:
@@ -664,7 +664,7 @@ def main() -> None:
         df_vazio["Latitude"] = None
         df_vazio["Longitude"] = None
         df_saida = organizar_saida_final(df_vazio)
-        salvar_resultado(df_saida, OUTPUT_CSV_PATH)
+        salvar_resultado(df_saida, OUTPUT_PARQUET_PATH)
         return
 
     driver: Optional[webdriver.Chrome] = None
@@ -680,7 +680,7 @@ def main() -> None:
     df_consultas = enriquecer_lat_lon(df_consultas)
     df_enriquecido = enriquecer_dataframe(df_original, df_consultas)
     df_saida = organizar_saida_final(df_enriquecido)
-    salvar_resultado(df_saida, OUTPUT_CSV_PATH)
+    salvar_resultado(df_saida, OUTPUT_PARQUET_PATH)
     print("Processo finalizado com sucesso.")
 
 
