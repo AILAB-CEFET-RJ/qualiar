@@ -164,7 +164,6 @@ Conjunto inicial sugerido:
 - Calendário: `dia_semana`, `fim_de_semana`, `mes`, `semana_epidemiologica`, `estacao`, `feriado`
 - Regime: `bloco_2012_2013`, `bloco_2014_2015`, `bloco_2016_2018`, `dummy_pos_2015_09`
 - Eventos: `dummy_periodo_pico_sazonal`, `dummy_extremo_positivo`, `dummy_extremo_negativo`
-- Clima/poluição com lags `1`, `3`, `7`, `14`
 
 ## 5. Pipeline recomendada (próximos passos)
 
