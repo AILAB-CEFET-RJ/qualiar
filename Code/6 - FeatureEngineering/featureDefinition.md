@@ -28,8 +28,7 @@ A ideia aqui e sair de um conjunto amplo de candidatos para um conjunto final ma
 | Nivel recente | `rolling_mean_7`, `rolling_mean_14`, `rolling_mean_30` | Resumem o nivel local da serie e ajudam a capturar ondas epidemiologicas. |
 | Variabilidade recente | `rolling_std_7`, `rolling_std_30` | Capturam mudancas de volatilidade, importantes numa serie com quebras e extremos. |
 | Calendario semanal | `dia_semana`, `fim_de_semana` | A serie mostrou efeito semanal forte, com dias uteis muito acima de fim de semana. |
-| Calendario anual | `mes`, `semana_epidemiologica`, `estacao`, `feriado` | Capturam a sazonalidade anual e o efeito de calendario observado na EDA. |
-| Regime estrutural | `indice_tempo`, `dummy_pos_2015_09` | A serie nao e homogenea; houve queda de patamar e changepoint relevante em 2015-09. |
+| Calendario anual | `mes`, `semana_epidemiologica`, `estacao` | Capturam a sazonalidade anual e o efeito de calendario observado na EDA. |
 | Periodo de pico | `dummy_periodo_pico_sazonal` | Abril a julho concentram a maior carga sazonal e ajudam a marcar o periodo mais critico. |
 
 ### 2. Features atmosfericas principais
